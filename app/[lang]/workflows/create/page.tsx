@@ -76,8 +76,7 @@ export default function CreateWorkflowPage() {
         setSteps(steps.filter(s => s.id !== id));
     };
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const updateStepParams = (id: string, newParams: any) => {
+    const updateStepParams = (id: string, newParams: Partial<StepConfig['params']>) => {
         setSteps(steps.map(s => s.id === id ? { ...s, params: { ...s.params, ...newParams } } : s));
     };
 
@@ -103,7 +102,7 @@ export default function CreateWorkflowPage() {
             setProgress(10);
             setCurrentStepInfo('Starting workflow engine...');
 
-            const outcome = await globalWorkerPool.runTask<any>('WORKFLOW_EXECUTE', {
+            const outcome = await globalWorkerPool.runTask<{ pdfBytes: Uint8Array }>('WORKFLOW_EXECUTE', {
                 fileData: await file.arrayBuffer(),
                 steps
             });
@@ -112,8 +111,7 @@ export default function CreateWorkflowPage() {
             setProgress(100);
             setCurrentStepInfo('Workflow Complete!');
 
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const blob = new Blob([(outcome as any).pdfBytes], { type: 'application/pdf' });
+            const blob = new Blob([outcome.pdfBytes as unknown as BlobPart], { type: 'application/pdf' });
             setResult({ blob, fileName: `workflow_result_${getBaseFileName(file.name)}.pdf` });
             toast.success('Workflow executed successfully!');
 
@@ -328,8 +326,7 @@ export default function CreateWorkflowPage() {
 
 // --- Subcomponent: Sortable Step Item ---
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function SortableStepItem({ step, index, onRemove, onUpdate }: { step: StepConfig, index: number, onRemove: (id: string) => void, onUpdate: (id: string, p: any) => void }) {
+function SortableStepItem({ step, index, onRemove, onUpdate }: { step: StepConfig, index: number, onRemove: (id: string) => void, onUpdate: (id: string, p: Partial<StepConfig['params']>) => void }) {
     const {
         attributes,
         listeners,

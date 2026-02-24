@@ -7,7 +7,7 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
 import { FileSpreadsheet, FileText, Variable } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { globalWorkerPool } from '@/lib/utils/worker-pool';
+import { apexService } from '@/lib/services/apex-service';
 
 export function MailMergeTool() {
     const [templateFile, setTemplateFile] = useState<File | null>(null);
@@ -45,13 +45,9 @@ export function MailMergeTool() {
         const toastId = toast.loading('Generating PDFs...');
 
         try {
-            const templateData = await templateFile.arrayBuffer();
-            const result = await globalWorkerPool.runTask<Uint8Array>('MAIL_MERGE', {
-                templateData,
-                rows: parsedData
-            });
+            const result = await apexService.mailMerge(templateFile, parsedData);
 
-            const blob = new Blob([result as any], { type: 'application/zip' });
+            const blob = new Blob([result] as any, { type: 'application/zip' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;

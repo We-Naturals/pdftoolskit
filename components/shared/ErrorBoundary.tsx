@@ -2,6 +2,7 @@
 
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { RefreshCw } from 'lucide-react';
+import { CriticalEngineFailure } from '@/components/CriticalEngineFailure';
 
 interface Props {
     children?: ReactNode;
@@ -33,21 +34,35 @@ export class ErrorBoundary extends Component<Props, State> {
                 return this.props.fallback;
             }
 
-            return (
-                <div className="flex flex-col items-center justify-center min-h-[400px] p-6 text-center space-y-4 bg-gray-50 rounded-lg border border-gray-100">
-                    <div className="bg-red-50 p-4 rounded-full">
-                        <RefreshCw className="w-8 h-8 text-red-500" />
+            const isApexError = this.state.error?.message.toLowerCase().includes('apex') ||
+                this.state.error?.message.toLowerCase().includes('wasm');
+
+            if (isApexError) {
+                return (
+                    <div className="container mx-auto px-4 py-20 flex justify-center">
+                        <CriticalEngineFailure
+                            error={this.state.error?.message || 'Unknown Engine Fault'}
+                            onReset={() => window.location.reload()}
+                        />
                     </div>
-                    <h2 className="text-xl font-bold text-gray-900">Something went wrong</h2>
-                    <p className="text-gray-600 max-w-md">
+                );
+            }
+
+            return (
+                <div className="flex flex-col items-center justify-center min-h-[400px] p-6 text-center space-y-4 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 glass">
+                    <div className="bg-red-500/10 p-4 rounded-full">
+                        <RefreshCw className="w-8 h-8 text-red-500 animate-spin-slow" />
+                    </div>
+                    <h2 className="text-xl font-bold text-white">Something went wrong</h2>
+                    <p className="text-gray-400 max-w-md">
                         We encountered an unexpected error. Please try reloading the page.
                     </p>
-                    <div className="text-xs text-mono bg-gray-100 p-2 rounded text-left overflow-auto max-w-md max-h-32">
+                    <div className="text-xs text-mono bg-black/40 p-2 rounded text-left overflow-auto max-w-md max-h-32 text-red-400 border border-white/5">
                         {this.state.error?.message}
                     </div>
                     <button
                         type="button"
-                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                        className="px-6 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-500 transition-all font-semibold shadow-lg shadow-blue-600/20"
                         onClick={() => window.location.reload()}
                     >
                         Reload Page

@@ -1,0 +1,34 @@
+name: Apex Engine Core Background Build
+
+on:
+  push:
+    paths:
+      - 'apex-core-foundation/**'
+  workflow_dispatch:
+
+jobs:
+  build-god-asset:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          lfs: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build Apex WASM Core (12.5h Expected)
+        run: |
+          cd apex-core-foundation
+          docker build -t apex-builder .
+          docker run --name builder apex-builder
+          docker cp builder:/build/apex-doc.wasm ../public/wasm/
+          docker cp builder:/build/apex-doc.js ../public/wasm/
+
+      - name: Push God Asset to LFS
+        run: |
+          git config --global user.name "Apex CI"
+          git config --global user.email "ci@pdftoolskit.com"
+          git add public/wasm/apex-doc.*
+          git commit -m "chore: update God Asset [skip ci]"
+          git push origin main

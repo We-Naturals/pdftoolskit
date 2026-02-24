@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import NextImage from 'next/image';
 import { useRouter } from 'next/navigation';
 import {
     Camera,
@@ -29,87 +30,18 @@ export function InstaScan() {
     const [scanPos, setScanPos] = useState(0);
     const [autoCaptureEnabled, setAutoCaptureEnabled] = useState(true);
 
-    // WebGPU Vision Loop
-    useEffect(() => {
-        if (!streaming) return;
+    const triggerCapture = useCallback(async () => {
+        if (!gpuCanvasRef.current) return;
+        if ('vibrate' in navigator) navigator.vibrate([20, 50, 20]);
 
-        let animationId: number;
-        let lastQuad: { x: number, y: number }[] | null = null;
-        let lockTimer = 0;
-        let autoCaptureTimer = 0;
+        const blob = await new Promise<Blob>(res => gpuCanvasRef.current!.toBlob(b => res(b!), 'image/jpeg', 0.95));
+        const url = URL.createObjectURL(blob);
+        setCapturedPages(prev => [...prev, url]);
+        if ('vibrate' in navigator) navigator.vibrate(80);
+        toast.success("Page Captured");
+    }, []);
 
-        const renderLoop = async () => {
-            if (videoRef.current && gpuCanvasRef.current) {
-                // 1. Process Frame with WebGPU
-                await webGpuVisionEngine.processFrame(videoRef.current, gpuCanvasRef.current, mode);
-
-                // 2. Perform Geometric Quad Detection
-                const quad = await webGpuVisionEngine.findQuad(videoRef.current);
-
-                // 3. Update Scan Line (0 to 1 loop)
-                setScanPos(prev => (prev + 0.01) % 1);
-
-                // 4. Check Quad Stability (Lock Logic)
-                if (quad && lastQuad) {
-                    const diff = quad.reduce((acc, p, i) => acc + Math.abs(p.x - lastQuad![i].x) + Math.abs(p.y - lastQuad![i].y), 0);
-                    if (diff < 0.04) { // Tightened for "Apex" precision
-                        lockTimer += 16;
-                        if (lockTimer > 500 && !isLocked) {
-                            setIsLocked(true);
-                            if ('vibrate' in navigator) navigator.vibrate(40);
-                        }
-
-                        // Auto-Capture Logic
-                        if (isLocked && autoCaptureEnabled) {
-                            autoCaptureTimer += 16;
-                            if (autoCaptureTimer > 1200) {
-                                triggerCapture();
-                                autoCaptureTimer = 0;
-                            }
-                        }
-                    } else {
-                        lockTimer = 0;
-                        autoCaptureTimer = 0;
-                        setIsLocked(false);
-                    }
-                } else if (!quad) {
-                    setIsLocked(false);
-                    lockTimer = 0;
-                    autoCaptureTimer = 0;
-                }
-                lastQuad = quad;
-
-                // 5. Render Overlay
-                renderOverlay(quad, intelResults, isLocked, scanPos);
-            }
-            animationId = requestAnimationFrame(renderLoop);
-        };
-
-        webGpuVisionEngine.init().then(() => {
-            animationId = requestAnimationFrame(renderLoop);
-        });
-
-        return () => {
-            if (animationId) cancelAnimationFrame(animationId);
-            webGpuVisionEngine.destroy();
-        };
-    }, [streaming, mode, intelResults, isLocked, autoCaptureEnabled]);
-
-    // Throttled Intelligence Sampling Loop
-    useEffect(() => {
-        if (!streaming) return;
-
-        const intelLoop = setInterval(async () => {
-            if (gpuCanvasRef.current) {
-                const results = await liveIntelligence.sample(gpuCanvasRef.current);
-                setIntelResults([...results]);
-            }
-        }, 500);
-
-        return () => clearInterval(intelLoop);
-    }, [streaming]);
-
-    const renderOverlay = (quad: { x: number, y: number }[] | null, intel: LiveIntelligenceResult[], locked: boolean, sPos: number) => {
+    const renderOverlay = useCallback((quad: { x: number, y: number }[] | null, intel: LiveIntelligenceResult[], locked: boolean, sPos: number) => {
         const canvas = overlayCanvasRef.current;
         if (!canvas) return;
         const ctx = canvas.getContext('2d')!;
@@ -179,26 +111,93 @@ export function InstaScan() {
             ctx.fillStyle = 'white';
             ctx.fillText(res.text, px + 8, py + (ph / 2) + 4);
         });
-    };
+    }, [streaming]);
 
-    const triggerCapture = async () => {
-        if (!gpuCanvasRef.current) return;
-        if ('vibrate' in navigator) navigator.vibrate([20, 50, 20]);
+    // WebGPU Vision Loop
+    useEffect(() => {
+        if (!streaming) return;
 
-        // 1. Detect latest quad for dewarping
-        const quad = await webGpuVisionEngine.findQuad(videoRef.current!);
+        let animationId: number;
+        let lastQuad: { x: number, y: number }[] | null = null;
+        let lockTimer = 0;
+        let autoCaptureTimer = 0;
 
-        // 2. Execute GPU Dewarp if quad exists
-        let finalUrl: string;
-        if (quad) {
-            finalUrl = await webGpuVisionEngine.dewarp(gpuCanvasRef.current, quad);
-        } else {
-            finalUrl = gpuCanvasRef.current.toDataURL('image/png');
-        }
+        const renderLoop = async () => {
+            if (videoRef.current && gpuCanvasRef.current) {
+                // 1. Process Frame with WebGPU
+                await webGpuVisionEngine.processFrame(videoRef.current, gpuCanvasRef.current, mode);
 
-        setCapturedPages(prev => [...prev, finalUrl]);
-        toast.success('Page ' + (capturedPages.length + 1) + ' Captured & Dewarped');
-    };
+                // 2. Perform Geometric Quad Detection
+                const quad = await webGpuVisionEngine.findQuad(videoRef.current);
+
+                // 3. Update Scan Line (0 to 1 loop)
+                setScanPos(prev => (prev + 0.01) % 1);
+
+                // 4. Check Quad Stability (Lock Logic)
+                if (quad && lastQuad) {
+                    const diff = quad.reduce((acc: number, p: { x: number, y: number }, i: number) => {
+                        // eslint-disable-next-line security/detect-object-injection
+                        const lp = lastQuad?.[i];
+                        if (!lp) return acc;
+                        return acc + Math.abs(p.x - lp.x) + Math.abs(p.y - lp.y);
+                    }, 0);
+                    if (diff < 0.04) { // Tightened for "Apex" precision
+                        lockTimer += 16;
+                        if (lockTimer > 500 && !isLocked) {
+                            setIsLocked(true);
+                            if ('vibrate' in navigator) navigator.vibrate(40);
+                        }
+
+                        // Auto-Capture Logic
+                        if (isLocked && autoCaptureEnabled) {
+                            autoCaptureTimer += 16;
+                            if (autoCaptureTimer > 1200) {
+                                triggerCapture();
+                                autoCaptureTimer = 0;
+                            }
+                        }
+                    } else {
+                        lockTimer = 0;
+                        autoCaptureTimer = 0;
+                        setIsLocked(false);
+                    }
+                } else if (!quad) {
+                    setIsLocked(false);
+                    lockTimer = 0;
+                    autoCaptureTimer = 0;
+                }
+                lastQuad = quad;
+
+                // 5. Render Overlay
+                renderOverlay(quad, intelResults, isLocked, scanPos);
+            }
+            animationId = requestAnimationFrame(renderLoop);
+        };
+
+        webGpuVisionEngine.init().then(() => {
+            animationId = requestAnimationFrame(renderLoop);
+        });
+
+        return () => {
+            if (animationId) cancelAnimationFrame(animationId);
+            webGpuVisionEngine.destroy();
+        };
+    }, [streaming, mode, intelResults, isLocked, autoCaptureEnabled, renderOverlay, scanPos, triggerCapture]);
+
+    // Throttled Intelligence Sampling Loop
+    useEffect(() => {
+        if (!streaming) return;
+
+        const intelLoop = setInterval(async () => {
+            if (gpuCanvasRef.current) {
+                const results = await liveIntelligence.sample(gpuCanvasRef.current);
+                setIntelResults([...results]);
+            }
+        }, 500);
+
+        return () => clearInterval(intelLoop);
+    }, [streaming]);
+
 
     const startCamera = async () => {
         try {
@@ -327,9 +326,9 @@ export function InstaScan() {
                 <GlassCard className="w-full p-6 border-emerald-500/20 bg-emerald-500/5 animate-in slide-in-from-bottom-8">
                     <div className="flex flex-col md:flex-row items-center justify-between gap-6">
                         <div className="flex -space-x-12 overflow-visible">
-                            {capturedPages.slice(-4).map((img, i) => (
-                                <div key={i} className="w-24 h-32 rounded-xl border-2 border-white/20 overflow-hidden shadow-2xl transform hover:-translate-y-4 transition-transform bg-black" style={{ zIndex: i }}>
-                                    <img src={img} className="w-full h-full object-cover" />
+                            {capturedPages.slice(-4).map((img: string, i: number) => (
+                                <div key={i} className="w-24 h-32 rounded-xl border-2 border-white/20 overflow-hidden shadow-2xl transform hover:-translate-y-4 transition-transform bg-black relative" style={{ zIndex: i }}>
+                                    <NextImage src={img} alt={`Captured Page ${i + 1}`} fill className="object-cover" />
                                 </div>
                             ))}
                             {capturedPages.length > 4 && (
@@ -344,7 +343,7 @@ export function InstaScan() {
                                 <CheckCircle2 className="w-5 h-5 text-emerald-400" />
                                 <h4 className="text-lg font-black text-white uppercase tracking-tighter">Batch Pipeline Active</h4>
                             </div>
-                            <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">{capturedPages.length} Pages Captured • Forensic Ready</p>
+                            <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">{capturedPages.length} Pages Captured &bull; Forensic Ready</p>
                         </div>
 
                         <div className="flex gap-4">

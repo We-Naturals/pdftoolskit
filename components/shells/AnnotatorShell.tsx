@@ -1,8 +1,7 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
-import { Download, CheckCircle, Layers, MousePointer2, RotateCw } from 'lucide-react';
-import toast from 'react-hot-toast';
+import React, { useState } from 'react';
+import { Download, CheckCircle, MousePointer2, RotateCw } from 'lucide-react';
 import { FileUpload } from '@/components/shared/FileUpload';
 import { ProgressBar } from '@/components/shared/ProgressBar';
 import { Button } from '@/components/ui/Button';
@@ -16,25 +15,23 @@ import { PDFPageViewer } from '@/components/pdf/PDFPageViewer';
 import { InteractiveOverlay } from '@/components/pdf/InteractiveOverlay';
 import { GlobalFeatureToggle } from '@/components/shared/GlobalFeatureToggle';
 import { GlobalAISidebar } from '@/components/shared/GlobalAISidebar';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 
-interface AnnotatorShellProps {
+interface AnnotatorShellProps<TAnnotation = unknown, TResult = { blob: Blob, fileName: string }> {
     tool: Tool;
-    onProcess: (file: File, annotations: any[]) => Promise<Blob | { blob: Blob, [key: string]: any }>;
-    renderSidePanel?: (annotations: any[], setAnnotations: React.Dispatch<React.SetStateAction<any[]>>) => React.ReactNode;
-    renderToolbar?: (file: File, annotations: any[], setAnnotations: React.Dispatch<React.SetStateAction<any[]>>) => React.ReactNode;
-    renderOverlayContent?: (pageIndex: number, annotations: any[], setAnnotations: React.Dispatch<React.SetStateAction<any[]>>) => React.ReactNode;
-    renderResultContent?: (result: any) => React.ReactNode;
+    onProcess: (file: File, annotations: TAnnotation[]) => Promise<Blob | TResult>;
+    renderSidePanel?: (annotations: TAnnotation[], setAnnotations: React.Dispatch<React.SetStateAction<TAnnotation[]>>) => React.ReactNode;
+    renderToolbar?: (file: File, annotations: TAnnotation[], setAnnotations: React.Dispatch<React.SetStateAction<TAnnotation[]>>) => React.ReactNode;
+    renderOverlayContent?: (pageIndex: number, annotations: TAnnotation[], setAnnotations: React.Dispatch<React.SetStateAction<TAnnotation[]>>) => React.ReactNode;
 }
 
-export function AnnotatorShell({
+export function AnnotatorShell<TAnnotation, TResult extends { blob: Blob, fileName: string }>({
     tool,
     onProcess,
     renderSidePanel,
     renderToolbar,
-    renderOverlayContent,
-    renderResultContent
-}: AnnotatorShellProps) {
+    renderOverlayContent
+}: AnnotatorShellProps<TAnnotation, TResult>) {
     const { limits, isPro } = useSubscription();
 
     const [activeFeatures, setActiveFeatures] = useState({
@@ -44,11 +41,11 @@ export function AnnotatorShell({
     });
 
     const toggleFeature = (feature: keyof typeof activeFeatures) => {
+        // eslint-disable-next-line security/detect-object-injection
         setActiveFeatures(prev => ({ ...prev, [feature]: !prev[feature] }));
     };
 
-    const [annotations, setAnnotations] = useState<any[]>([]);
-    const [pageIndex, setPageIndex] = useState(1);
+    const [annotations, setAnnotations] = useState<TAnnotation[]>([]);
     const [viewerDimensions, setViewerDimensions] = useState({ width: 0, height: 0 });
 
     const {
@@ -58,20 +55,20 @@ export function AnnotatorShell({
         result,
         file,
         execute,
-        reset,
         handleFileSelect,
         setFile,
         setResult,
-    } = useToolController<File, any>({
+    } = useToolController<File, TResult>({
         engine: async (f: File) => {
-            const result = await onProcess(f, annotations);
-            if (result instanceof Blob) {
-                return { blob: result, fileName: `processed_${f.name}` };
+            const outcome = await onProcess(f, annotations);
+            if (outcome instanceof Blob) {
+                return { blob: outcome, fileName: `processed_${f.name}` } as TResult;
             }
+            // If outcome is not a Blob, it must be of type TResult based on onProcess signature
             return {
-                ...result,
-                fileName: result.fileName || `processed_${f.name}`
-            };
+                ...outcome,
+                fileName: outcome.fileName || `processed_${f.name}`
+            } as TResult;
         },
     });
 
@@ -195,7 +192,7 @@ export function AnnotatorShell({
                             <div className="relative shadow-2xl border border-white/10 rounded-lg overflow-hidden group">
                                 <PDFPageViewer
                                     file={file}
-                                    pageNumber={pageIndex}
+                                    pageNumber={1}
                                     onPageLoad={(width, height) => setViewerDimensions({ width, height })}
                                 />
                                 {viewerDimensions.width > 0 && (
@@ -205,7 +202,7 @@ export function AnnotatorShell({
                                         selection={null}
                                         onSelectionChange={() => { }}
                                     >
-                                        {renderOverlayContent && renderOverlayContent(pageIndex, annotations, setAnnotations)}
+                                        {renderOverlayContent && renderOverlayContent(1, annotations, setAnnotations)}
                                     </InteractiveOverlay>
                                 )}
 
@@ -262,7 +259,7 @@ export function AnnotatorShell({
                         </GlassCard>
 
                         <div className="mt-8 pt-8 border-t border-white/5 animate-in slide-up duration-700 delay-300">
-                            <NextSteps currentToolId={tool.id} fileBuffer={file ? (file as any)._arrayBuffer : null} />
+                            <NextSteps currentToolId={tool.id} fileBuffer={file ? (file as File & { _arrayBuffer?: ArrayBuffer })._arrayBuffer : null} />
                         </div>
                     </div>
                 </div>

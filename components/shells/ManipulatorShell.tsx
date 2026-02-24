@@ -16,20 +16,20 @@ import { downloadFile, validatePDFFile } from '@/lib/utils';
 import { Tool } from '@/data/tools';
 import { GlobalFeatureToggle } from '@/components/shared/GlobalFeatureToggle';
 import { GlobalAISidebar } from '@/components/shared/GlobalAISidebar';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 
-interface ManipulatorShellProps {
+interface ManipulatorShellProps<TPage = unknown> {
     tool: Tool;
-    onAction: (pages: any[], fileMap: Map<string, File>) => Promise<Uint8Array | Blob>;
+    onAction: (pages: TPage[], fileMap: Map<string, File>) => Promise<Uint8Array | Blob>;
     actionLabel?: string;
     successMessage?: string;
-    renderGrid?: (pages: any[], files: any[]) => React.ReactNode;
-    renderActionPanel?: (pages: any[], files: any[], handleExecute: () => void, setPages: (p: any[]) => void) => React.ReactNode;
+    renderGrid?: (pages: TPage[], files: File[]) => React.ReactNode;
+    renderActionPanel?: (pages: TPage[], files: File[], handleExecute: () => void, setPages: (p: TPage[]) => void) => React.ReactNode;
     accept?: Record<string, string[]>;
     validateFile?: (file: File) => { valid: boolean; error?: string };
 }
 
-export function ManipulatorShell({
+export function ManipulatorShell<TPage>({
     tool,
     onAction,
     actionLabel = "Execute Action",
@@ -38,12 +38,12 @@ export function ManipulatorShell({
     renderActionPanel,
     accept,
     validateFile = validatePDFFile,
-}: ManipulatorShellProps) {
+}: ManipulatorShellProps<TPage>) {
     const { limits, isPro } = useSubscription();
 
     // Store
     const files = useFileStore((state) => state.files);
-    const pages = useFileStore((state) => state.pages);
+    const pages = useFileStore((state) => state.pages as TPage[]);
     const addFile = useFileStore((state) => state.addFile);
     const removeFile = useFileStore((state) => state.removeFile);
 
@@ -60,6 +60,7 @@ export function ManipulatorShell({
     });
 
     const toggleFeature = (feature: 'ai' | 'p2p' | 'audit') => {
+        // eslint-disable-next-line security/detect-object-injection
         setActiveFeatures(prev => ({ ...prev, [feature]: !prev[feature] }));
     };
 
@@ -117,7 +118,7 @@ export function ManipulatorShell({
             clearInterval(interval);
             setProgress(100);
 
-            const blob = output instanceof Blob ? output : new Blob([output as any], { type: 'application/pdf' });
+            const blob = output instanceof Blob ? output : new Blob([output as unknown as BlobPart], { type: 'application/pdf' });
             setResult({ blob, fileName: `${tool.id}_${Date.now()}.pdf` });
             toast.success(successMessage);
         } catch (error) {
@@ -181,7 +182,7 @@ export function ManipulatorShell({
                         </GlassCard>
 
                         <div className="mt-8 pt-8 border-t border-white/5 animate-in slide-up duration-700 delay-300">
-                            <NextSteps currentToolId={tool.id} fileBuffer={files[0]?.file ? (files[0].file as any)._arrayBuffer : null} />
+                            <NextSteps currentToolId={tool.id} fileBuffer={files[0]?.file ? (files[0].file as File & { _arrayBuffer?: ArrayBuffer })._arrayBuffer : null} />
                         </div>
                     </div>
                 </motion.div>

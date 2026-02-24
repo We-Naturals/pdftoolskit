@@ -4,18 +4,11 @@
 import React, { useState, useMemo } from 'react';
 import {
     X,
-    Type,
-    AlignCenter,
-    AlignLeft,
-    Maximize2,
-    Minimize2,
-    Download,
     Settings,
     FileText
 } from 'lucide-react';
-import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
-import { reflowEngine, ReflowTree } from '@/lib/engines/reflow-engine';
+import { reflowEngine } from '@/lib/engines/reflow-engine';
 import { OCRZone } from '@/lib/analysis/ocr-layout-analyzer';
 
 interface ReflowViewerProps {
@@ -26,8 +19,6 @@ interface ReflowViewerProps {
 
 export function ReflowViewer({ pages, onClose, fileName }: ReflowViewerProps) {
     const [fontSize, setFontSize] = useState(16);
-    const [margin, setMargin] = useState(40);
-    const [alignment, setAlignment] = useState<'left' | 'center'>('left');
     const [theme, setTheme] = useState<'light' | 'dark' | 'sepia'>('dark');
 
     const tree = useMemo(() => reflowEngine.virtualize(pages), [pages]);
@@ -110,17 +101,18 @@ export function ReflowViewer({ pages, onClose, fileName }: ReflowViewerProps) {
             </div>
 
             {/* Main Content Area */}
+            {/* eslint-disable-next-line security/detect-object-injection */}
             <div className={`flex-grow overflow-y-auto overflow-x-hidden ${themes[theme]} transition-colors duration-500`}>
                 <div
                     className="max-w-3xl mx-auto py-20 px-6 sm:px-12 md:px-20 animate-in slide-in-from-bottom-10 duration-700"
                     style={{
                         fontSize: `${fontSize}px`,
-                        lineHeight: 1.6,
-                        textAlign: alignment === 'left' ? 'left' : 'center'
+                        lineHeight: 1.6
                     }}
                 >
                     {tree.sections.map((node, idx) => {
-                        const Tag = node.type as any;
+                        // eslint-disable-next-line security/detect-object-injection
+                        const Tag = node.type as React.ElementType;
 
                         // Handle Tables
                         if (node.type === 'table') {

@@ -3,7 +3,6 @@
 import React, { useState } from 'react';
 import { Send, Bot, User, Sparkles, X, Minimize2, Maximize2 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 

@@ -7,15 +7,18 @@ import { TransformerShell } from '@/components/shells/TransformerShell';
 import { tools } from '@/data/tools';
 import { GlassCard } from '@/components/ui/GlassCard';
 
-import { globalWorkerPool } from '@/lib/utils/worker-pool';
+import { apexService } from '@/lib/services/apex-service';
 
 export function WordToPdfTool() {
     const tool = tools.find(t => t.id === 'wordToPdf')!;
 
     const handleConvert = async (file: File) => {
-        const fileData = await file.arrayBuffer();
-        const result = await globalWorkerPool.runTask<Uint8Array>('WORD_TO_PDF', { fileData });
-        return new Blob([result as any], { type: 'application/pdf' });
+        const result = await apexService.officeToPdf(file, {
+            initialView: 'FitWidth',
+            imageCompression: 90,
+            pageRange: 'all'
+        });
+        return new Blob([result] as any, { type: 'application/pdf' });
     };
 
     const renderOptions = () => (

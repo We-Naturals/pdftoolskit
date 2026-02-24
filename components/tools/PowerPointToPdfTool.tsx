@@ -11,18 +11,15 @@ interface PptSettings {
     mode: 'vivid' | 'structure';
 }
 
-import { globalWorkerPool } from '@/lib/utils/worker-pool';
+import { apexService } from '@/lib/services/apex-service';
 
 export function PowerPointToPdfTool() {
     const tool = tools.find(t => t.id === 'powerPointToPdf')!;
 
-    const handleConvert = async (file: File, settings: PptSettings) => {
-        const fileData = await file.arrayBuffer();
-        const result = await globalWorkerPool.runTask<Uint8Array>('PPT_TO_PDF', {
-            fileData,
-            options: { mode: settings.mode }
-        });
-        return new Blob([result as any], { type: 'application/pdf' });
+    const handleConvert = async (file: File) => {
+        // Apex natively handles PPTX vividly
+        const result = await apexService.officeToPdf(file);
+        return new Blob([result] as any, { type: 'application/pdf' });
     };
 
     const renderSettings = (settings: PptSettings, setSettings: (s: PptSettings) => void) => (

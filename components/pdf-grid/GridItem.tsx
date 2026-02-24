@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, memo } from 'react';
+import Image from 'next/image';
 import { usePDFWorker } from '@/lib/hooks/use-pdf-worker';
 import { cn } from '@/lib/utils';
 import { Loader2, Check, RotateCw } from 'lucide-react';
@@ -106,9 +107,11 @@ export const GridItem = memo(function GridItem({
                 {/* Canvas Container */}
                 <div className="flex-1 relative bg-slate-50 flex items-center justify-center overflow-hidden">
                     {page.imageUrl ? (
-                        <img
+                        <Image
                             src={page.imageUrl}
                             alt={`Asset ${page.pageIndex + 1}`}
+                            width={width}
+                            height={height}
                             className="max-w-full max-h-full object-contain shadow-sm"
                             onLoad={() => setLoading(false)}
                             onError={() => setError(true)}

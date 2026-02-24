@@ -7,7 +7,8 @@ import { FileUpload } from '@/components/shared/FileUpload';
 import { ProgressBar } from '@/components/shared/ProgressBar';
 import { Button } from '@/components/ui/Button';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { globalWorkerPool } from '@/lib/utils/worker-pool';
+import { apexService } from '@/lib/services/apex-service';
+
 import { downloadFile, validatePDFFile, cn, formatFileSize } from '@/lib/utils';
 import { toolGuides } from '@/data/guides';
 import { QuickGuide } from '@/components/shared/QuickGuide';
@@ -57,10 +58,7 @@ export default function PDFToPowerPointPage() {
                 });
             }, 500);
 
-            const pptxBytes = await globalWorkerPool.runTask<Uint8Array>('PDF_TO_PPTX', {
-                fileData: await file.arrayBuffer(),
-                options: { mode }
-            });
+            const pptxBytes = await apexService.pdfToOffice(file, 'pptx');
 
             clearInterval(interval);
             setProgress(100);

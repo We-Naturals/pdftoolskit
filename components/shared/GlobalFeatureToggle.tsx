@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Brain, Users, Shield, MessageSquare } from 'lucide-react';
+import { Brain, Users, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tool } from '@/data/tools';
 import { motion, AnimatePresence } from 'framer-motion';

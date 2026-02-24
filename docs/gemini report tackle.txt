@@ -1,0 +1,42 @@
+# GEMINI AUDIT TACKLE REPORT 🛠️
+
+This document outlines the specific technical strategies to resolve the vulnerabilities and "brittle" implementation details identified during the Gemini 1.5 Pro Forensic Audit.
+
+## 1. Purging the "Simulation Trap"
+**Audit Finding**: The engine currently "fakes" success with mock PDF headers if the binary fails to load.
+**Tackle Strategy**:
+- **Strict Mode Production**: Implement a `process.env.NODE_ENV` check in `apex-core.worker.ts`.
+- **Termination Logic**: In production, if `createApexModule` fails, the worker must throw a `CRITICAL_ENGINE_MISSING` error instead of populating `wasmModule` with mock functions.
+- **UI Feedback**: Add a "System Readiness" check in `ApexService` that pings the worker for binary health before enabling tool buttons.
+
+## 2. SharedArrayBuffer Transfer Correction
+**Audit Finding**: Adding `SharedArrayBuffer` to the `postMessage` transfer list is technically invalid and causes `DataCloneError` in strict browsers.
+**Tackle Strategy**:
+- **Conditional Transfer**: Refactor `ApexService.dispatch()` to only add the buffer to the transfer list if `!(optimizedBuffer instanceof SharedArrayBuffer)`.
+- **Logic**:
+  ```typescript
+  const transferList = (optimizedBuffer instanceof Uint8Array && !(optimizedBuffer.buffer instanceof SharedArrayBuffer)) 
+    ? [optimizedBuffer.buffer] 
+    : [];
+  ```
+
+## 3. Hardening the Semantic Bridge
+**Audit Finding**: Regex-based HTML parsing is brittle and prone to data loss.
+**Tackle Strategy**:
+- **DOM Integration**: Migrate the `reconstruct` logic from a static string-slicer to a `DOMParser` approach (or a lightweight virtual-DOM parser like `linkedom` if moved to the worker).
+- **Attribute Preservation**: Implement a recursive tree-walker to map LOKit's internal style classes to our Next.js design system tokens without relying on fragile string matches.
+
+## 4. Deep Forensic Purge (Phase 47.3 Extension)
+**Audit Finding**: Wiping only `/tmp` leaves residual data in `/home/web_user/`.
+**Tackle Strategy**:
+- **Recursive VFS Wipe**: Update `FORENSIC_WIPE` command to use a recursive `rmdir` on `/home/web_user/.config/libreoffice` after every high-security job.
+- **Worker Recycling**: Implement an optional `forceRestart` flag in the wipe command that terminates the worker thread and spawns a fresh one, guaranteeing a 100% clean WASM heap.
+
+## 5. Async Non-Blocking Orchestration
+**Audit Finding**: Synchronous `callMain` blocks the worker thread.
+**Tackle Strategy**:
+- **Task Queueing**: Acknowledge that WASM is single-threaded, but implement a **Task Heartbeat** in the worker to prevent the browser from flagging the thread as "Not Responding" during massive 500MB+ conversions.
+- **Visual Progress**: Stream `STDOUT` logs from the engine back to the UI in real-time so the user sees "Page 15/500 Rendered" instead of a frozen screen.
+
+---
+**Architect's Note**: These improvements move the project from an "Engineering MVP" to a "Production-Ready Enterprise Platform." Proceed with Batch 49 implementation.

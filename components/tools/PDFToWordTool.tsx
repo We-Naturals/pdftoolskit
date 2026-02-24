@@ -8,22 +8,15 @@ import { tools } from '@/data/tools';
 import { getBaseFileName } from '@/lib/utils';
 import toast from 'react-hot-toast';
 
-import { globalWorkerPool } from '@/lib/utils/worker-pool';
+import { apexService } from '@/lib/services/apex-service';
 
 function PDFToWordContent() {
     const tool = tools.find(t => t.id === 'pdfToWord')!;
 
     const handleConvert = async (file: File) => {
-        const fileData = await file.arrayBuffer();
-        const { data, isScanned } = await globalWorkerPool.runTask<{ data: Uint8Array, isScanned: boolean }>('PDF_TO_WORD', {
-            fileData
-        });
+        const data = await apexService.pdfToOffice(file, 'docx');
 
-        if (isScanned) {
-            toast.success("Detected scanned PDF. Used OCR for better results.");
-        }
-
-        return new Blob([data as any], {
+        return new Blob([data] as any, {
             type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
         });
     };

@@ -1,1 +1,2 @@
 public/wasm/apex-doc.wasm filter=lfs diff=lfs merge=lfs -text
+public/wasm/apex-doc.js filter=lfs diff=lfs merge=lfs -text

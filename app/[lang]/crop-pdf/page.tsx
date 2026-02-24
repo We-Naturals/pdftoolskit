@@ -8,7 +8,6 @@ import { FileUpload } from '@/components/shared/FileUpload';
 // import { ProgressBar } from '@/components/shared/ProgressBar';
 import { Button } from '@/components/ui/Button';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { cropPDF } from '@/lib/pdf-utils';
 import { downloadFile, validatePDFFile, getBaseFileName, cn } from '@/lib/utils';
 import { globalWorkerPool } from '@/lib/utils/worker-pool';
 import { InteractiveOverlay, SelectionRect } from '@/components/pdf/InteractiveOverlay';

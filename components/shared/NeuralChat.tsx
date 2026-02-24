@@ -9,11 +9,9 @@ import {
     Loader2,
     X,
     Sparkles,
-    MessageSquare,
     Brain
 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { Button } from '@/components/ui/Button';
 import { ragEngine, ChatMessage } from '@/lib/ai/rag-engine';
 import { modelLoader, ModelProgress } from '@/lib/ai/model-loader';
 import toast from 'react-hot-toast';

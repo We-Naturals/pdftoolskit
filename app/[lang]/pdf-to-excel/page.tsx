@@ -7,8 +7,8 @@ import { FileUpload } from '@/components/shared/FileUpload';
 import { ProgressBar } from '@/components/shared/ProgressBar';
 import { Button } from '@/components/ui/Button';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { globalWorkerPool } from '@/lib/utils/worker-pool';
-import { PdfToExcelOptions } from '@/lib/services/pdf/converters/pdfToExcel';
+import { apexService } from '@/lib/services/apex-service';
+
 import { downloadFile, getBaseFileName } from '@/lib/utils';
 import { toolGuides } from '@/data/guides';
 import { QuickGuide } from '@/components/shared/QuickGuide';
@@ -53,15 +53,7 @@ export default function PDFToExcelPage() {
                 setProgress((prev) => Math.min(prev + 5, 95));
             }, 600);
 
-            const options: PdfToExcelOptions = {
-                mergePages,
-                detectNumbers
-            };
-
-            const excelBytes = await globalWorkerPool.runTask<Uint8Array>('PDF_TO_EXCEL', {
-                fileData: await file.arrayBuffer(),
-                options
-            });
+            const excelBytes = await apexService.pdfToOffice(file, 'xlsx');
 
             clearInterval(progressInterval);
             setProgress(100);

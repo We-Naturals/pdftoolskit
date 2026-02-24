@@ -1,0 +1,99 @@
+# APEX ENGINE: ULTIMATE HARDENING & FORENSIC FINALITY (V3) 💎🛡️⚖️
+
+This document is the absolute, definitive roadmap for the "Document OS" transformation. It addresses 100% of the findings from the **Forensic Audit**, **Gemini Tackle**, and **Atom-Level Manual Scrutiny**. No stone is left unturned.
+
+---
+
+## Phase 49: Build Sovereignty & Binary Provenance (Infrastructure)
+**Goal**: Restore 100% build reproducibility and verify "God Asset" authenticity.
+
+### Batch 49.1: Build Harness & Docker Isolation
+- **[RESTORE] Multi-Stage Dockerfile**: Re-implement `apex-core-foundation/Dockerfile`.
+  - Stage 1: Emscripten/LOKit compilation (14-hour core).
+  - Stage 2: Minification and Asset Extraction.
+- **[NEW] Build Metadata**: Embed a `BUILD_INFO.json` into the WASM VFS containing the exact Git Hash and Timestamp of the C++ source.
+- **[NEW] Checksum Guard**: Implement `scripts/verify-binaries.sh` to cross-reference `public/wasm/` files against a committed `manifest.lock`.
+
+### Batch 49.2: Automated DevOps (CI/CD)
+- **[NEW] GitHub Self-Hosted Runner Support**: Configure workflows for high-performance builds.
+- **[FIX] LFS Pathing**: Resolve Git LFS link issues to ensure the 144MB binary never corrupts the `.git` directory size.
+
+---
+
+## Phase 50: Security Hardening & Forensic Purification (Privacy)
+**Goal**: Finalize the "Zero-Trace" promise with recursive, recursive-level wipes.
+
+### Batch 50.1: Recursive Forensic Wipe (The "Scrub")
+- **[FIX] VFS Recursive Kill**: Update `FORENSIC_WIPE` to use a true recursive `unlink` and `rmdir` for `/tmp` and `/home/web_user/`.
+- **[NEW] Font Purge**: Specifically target the `.config/libreoffice/4/user/fonts/` directory to ensure custom corporate fonts never survive the session.
+- **[NEW] Worker Recycling**: Implement `this.terminate()` and `new Worker()` orchestration in `ApexService` for high-security jobs.
+
+### Batch 50.2: Path Injection & Metadata Cloaking
+- **[FIX] VFS Jail**: Implement a strict "Filename Jail" in the worker to block `../` and absolute paths.
+- **[FIX] Image Recovery Jail**: Fix the traversal risk in `officeToPdf.ts` (Batch 1.2).
+- **[FIX] Forced Anonymization**: Hard-code `PDF_FLAGS_STRIP_METADATA` as the default at the C++ bridge level (logic fallback).
+
+---
+
+## Phase 51: Engine Integrity & Concurrency Fault-Tolerance
+**Goal**: Remove silent failure traps and race conditions.
+
+### Batch 51.1: The "Anti-Simulation" Layer
+- **[DELETE] Simulation Fallback**: Purge the "Mock Engine" that returns 5-byte corrupted PDFs ([Line 374 of Audit](file:///d:/code/AntiGravity/pdftoolskit-main/docs/FORENSIC%20CODEBASE%20AUDIT%20REPORT.txt#L374)).
+- **[NEW] Error Boundary**: Implement a `CriticalEngineFailure` UI component for binary load errors.
+
+### Batch 51.2: Initialization & Concurrency Guards
+- **[FIX] Atomic Signal**: Implement a `Mutex` or `Lock` for the `isInitialized` flag to prevent multiple workers from crashing on race-condition loads.
+- **[NEW] Load Timer**: Implement a 10s "Health or Kill" timer for WASM fetching.
+
+---
+
+## Phase 52: Performance & Scalability (Breaking Serialization)
+**Goal**: Move from 1-at-a-time to Multi-Core parallelism.
+
+### Batch 52.1: The Apex Worker Pool (High Speed)
+- **[NEW] Multi-Engine Core**: Spawn 2-4 Apex Workers by default.
+- **[NEW] Load Balancer**: Implement an `ApexJobQueue` that distributes tasks across the pool.
+
+### Batch 52.2: Zero-Copy & Memory Optimization
+- **[FIX] SharedBuffer Transfer Logic**: Stop trying to "transfer" SharedArrayBuffers; use ownership management correctly.
+- **[NEW] Memory Pooling**: Implement `wasmMemoryPool` to reuse Large Buffers (>10MB) instead of constant allocation/deallocation.
+
+---
+
+## Phase 53: Modernization & Ecosystem Purification (Technical Debt)
+**Goal**: Consolidate libraries and modernize data parsing.
+
+### Batch 53.1: Precision Parsing (DOM vs Regex)
+- **[FIX] DOM-Based HTML Bridge**: Replace string-slicing with `linkedom` or `DOMParser` for structural editing.
+- **[FIX] XML Integrity**: Replace regex-based `.docx` extraction with `@xmldom/xmldom`.
+- **[NEW] Charset Detection**: Add `jschardet` to identify encoding before passing text to the engine.
+
+### Batch 53.2: Dependency Pruning & Type Safety
+- **[DELETE] Legacy Bloat**: Remove `jsPDF`, `html2canvas`, and `pptxgenjs`. Consolidate 100% on `pdf-lib` and the Apex Core.
+- **[FIX] 100% Strict Mode**: Remove every `@ts-ignore` in the worker and service layers.
+- **[FIX] UUID Uniformity**: Replace all `Math.random` keys with `crypto.randomUUID()`.
+
+---
+
+## Phase 54: Advanced Typography & Asset Injection
+**Goal**: Solve the "27 Font Limit" and enable global language support.
+
+### Batch 54.1: The Global Font Registry (Dynamic)
+- **[NEW] Asset Streaming**: Implement a lazy-loading font registry that fetches only the glyphs needed (subsetting).
+- **[NEW] User-Font Mount**: Allow users to drag-and-drop their own `.ttf` files directly into the "God Core" VFS.
+
+### Batch 54.2: CJK & RTL Support
+- **[NEW] HarfBuzz/ICU Integration**: Ensure the WASM build includes full shaping for Arabic, Hebrew, and Asian character sets.
+
+---
+
+## Phase 55: Automated Forensic Verification (Self-Auditing)
+**Goal**: Continuous verification of code integrity.
+
+### Batch 55.1: Zero-Leak Unit Tests
+- **[NEW] Audit Tests**: Automated tests that scan the WASM VFS post-job to confirm zero files remain.
+- **[NEW] Fidelity Diffing**: Pixel-match tests comparing Apex output vs native Office exports.
+
+---
+**FINAL VERDICT**: Completion of these 14 batches represents the **Absolute Ceiling of Web Engineering**. The project moves from "Modern Utility" to **"Sovereign Document Infrastructure."**

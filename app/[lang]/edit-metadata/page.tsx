@@ -33,6 +33,17 @@ export default function EditMetadataPage() {
         modificationDate: ''
     });
 
+    interface Metadata {
+        title?: string;
+        author?: string;
+        subject?: string;
+        keywords?: string;
+        creator?: string;
+        producer?: string;
+        creationDate?: string;
+        modificationDate?: string;
+    }
+
     const handleFileSelected = async (files: File[]) => {
         const validation = validatePDFFile(files[0]);
         if (validation.valid) {
@@ -47,7 +58,7 @@ export default function EditMetadataPage() {
 
     const loadMetadata = async (file: File) => {
         try {
-            const data = await globalWorkerPool.runTask<any>('GET_METADATA', {
+            const data = await globalWorkerPool.runTask<Metadata>('GET_METADATA', {
                 fileData: await file.arrayBuffer()
             });
 
@@ -109,8 +120,7 @@ export default function EditMetadataPage() {
             const newPdfBytes = await globalWorkerPool.runTask<Uint8Array>('STRIP_METADATA', {
                 fileData: await file.arrayBuffer()
             });
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const blob = new Blob([newPdfBytes as any], { type: 'application/pdf' });
+            const blob = new Blob([newPdfBytes as unknown as BlobPart], { type: 'application/pdf' });
             downloadFile(blob, `${getBaseFileName(file.name)}_anonymized.pdf`);
             toast.success('Document Anonymized!');
         } catch (_e) {
@@ -138,7 +148,7 @@ export default function EditMetadataPage() {
             });
 
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const blob = new Blob([newPdfBytes as any], { type: 'application/pdf' });
+            const blob = new Blob([newPdfBytes as unknown as BlobPart], { type: 'application/pdf' });
             downloadFile(blob, `${getBaseFileName(file.name)}_synced.pdf`);
 
             toast.success('XMP & Info Dictionary Synced!');

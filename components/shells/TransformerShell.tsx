@@ -14,9 +14,9 @@ import { Tool } from '@/data/tools';
 import { useToolController } from '@/lib/hooks/useToolController';
 import { GlobalFeatureToggle } from '@/components/shared/GlobalFeatureToggle';
 import { GlobalAISidebar } from '@/components/shared/GlobalAISidebar';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 
-interface TransformerShellProps<TSettings = any, TOutput = Blob> {
+interface TransformerShellProps<TSettings = unknown, TOutput = Blob> {
     tool: Tool;
     engine: (file: File, settings: TSettings) => Promise<TOutput>;
     initialSettings?: TSettings;
@@ -96,6 +96,7 @@ export function TransformerShell<TSettings, TOutput = Blob>({
     });
 
     const toggleFeature = (feature: 'ai' | 'p2p' | 'audit') => {
+        // eslint-disable-next-line security/detect-object-injection
         setActiveFeatures(prev => ({ ...prev, [feature]: !prev[feature] }));
     };
 
@@ -269,7 +270,7 @@ export function TransformerShell<TSettings, TOutput = Blob>({
                             </GlassCard>
 
                             <div className="mt-8 pt-8 border-t border-white/5 animate-in slide-up duration-700 delay-300">
-                                <NextSteps currentToolId={tool.id} fileBuffer={file ? (file as any)._arrayBuffer || null : null} />
+                                <NextSteps currentToolId={tool.id} fileBuffer={file ? (file as File & { _arrayBuffer?: ArrayBuffer })._arrayBuffer || null : null} />
                             </div>
                         </div>
                     )}

@@ -4,10 +4,9 @@
 import React, { Suspense, useState } from 'react';
 import { Sparkles, Zap, Shield, Settings2 } from 'lucide-react';
 import { TransformerShell } from '@/components/shells/TransformerShell';
-import { compressPDF } from '@/lib/pdf-utils';
 import { tools } from '@/data/tools';
 import { cn } from '@/lib/utils';
-import { globalWorkerPool } from '@/lib/utils/worker-pool';
+import { apexService } from '@/lib/services/apex-service';
 
 type CompressionMode = 'extreme' | 'balanced' | 'lossless' | 'custom';
 
@@ -70,13 +69,9 @@ function CompressToolContent() {
     );
 
     const handleCompress = async (file: File, settings: CompressSettings) => {
-        const fileData = await file.arrayBuffer();
-        const result = await globalWorkerPool.runTask<Uint8Array>('COMPRESS_PDF', {
-            fileData,
-            options: {
-                mode: settings.mode,
-                stripMetadata: settings.stripMetadata
-            }
+        const result = await apexService.optimizePdf(file, {
+            mode: settings.mode,
+            stripMetadata: settings.stripMetadata
         });
         return new Blob([result as any], { type: 'application/pdf' });
     };
@@ -100,4 +95,3 @@ export function CompressTool() {
         </Suspense>
     );
 }
-

@@ -5,18 +5,15 @@ import React from 'react';
 import { TransformerShell } from '@/components/shells/TransformerShell';
 import { tools } from '@/data/tools';
 
-import { globalWorkerPool } from '@/lib/utils/worker-pool';
+import { apexService } from '@/lib/services/apex-service';
+
 
 export function ExcelToPdfTool() {
     const tool = tools.find(t => t.id === 'excelToPdf')!;
 
     const handleConvert = async (file: File) => {
-        const fileData = await file.arrayBuffer();
-        const result = await globalWorkerPool.runTask<Uint8Array>('EXCEL_TO_PDF', {
-            fileData,
-            options: { orientation: 'p', sheets: 'all', preserveStyles: true }
-        });
-        return new Blob([result as any], { type: 'application/pdf' });
+        const result = await apexService.officeToPdf(file);
+        return new Blob([result] as any, { type: 'application/pdf' });
     };
 
     return (

@@ -3,6 +3,10 @@ import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import JSZip from 'jszip';
 import fontkit from '@pdf-lib/fontkit';
 
+// PHASE 53.1: PRECISION CHARSET DETECTION
+declare const require: any;
+const jschardet = require('jschardet');
+
 export interface OfficeToPdfOptions {
     addBranding?: boolean;
     onProgress?: (progress: number) => void;
@@ -71,16 +75,24 @@ export async function officeToPdf(file: File, options: OfficeToPdfOptions = {}):
         throw new Error("WASM Engine required for this file format. Fallback only available for .docx");
     }
 
-    const zip = await JSZip.loadAsync(arrayBuffer);
+    /**
+     * PHASE 41.1 / 53.1: ABSOLUTE FIDELITY OFFICE TO PDF (The Fallback Core)
+     * This is the high-performance secondary engine for environments without WASM.
+     * Hardened with Semantic DOM Parsing and precision jschardet detection.
+     */
+    const zip = await JSZip.loadAsync(file);
     const docXmlFile = zip.file("word/document.xml");
 
-    if (!docXmlFile) {
-        throw new Error("Invalid or corrupted docx: missing word/document.xml core structural file.");
-    }
+    if (!docXmlFile) throw new Error("Invalid OOXML: Missing document.xml");
 
-    const xmlString = await docXmlFile.async("string");
+    // Precision Charset Logic
+    const rawBuffer = await docXmlFile.async("uint8array");
+    const detection = jschardet.detect(Buffer.from(rawBuffer));
+    const encoding = detection.encoding || 'utf-8';
 
-    // --- Parse Relationships for Images ---
+    const xmlString = new TextDecoder(encoding).decode(rawBuffer);
+
+    // --- Parse Relationships for Images (Phase 53.1) ---
     const relsXmlFile = zip.file("word/_rels/document.xml.rels");
     const relsMap: Record<string, string> = {};
     if (relsXmlFile) {
@@ -91,6 +103,9 @@ export async function officeToPdf(file: File, options: OfficeToPdfOptions = {}):
             relsMap[relMatch[1]] = relMatch[2];
         }
     }
+
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(xmlString, "application/xml");
 
     // Initialize standard Vector PDF with Custom Font Synthesis
     const pdfDoc = await PDFDocument.create();
@@ -125,66 +140,72 @@ export async function officeToPdf(file: File, options: OfficeToPdfOptions = {}):
     const margin = 50;
     const lineHeight = 14;
 
-    // Secure Regex parser for worker environments (No DOMParser needed)
-    // Matches block-level elements: Paragraphs and Tables
-    const blockRegex = /(<w:p[ >][\s\S]*?<\/w:p>|<w:tbl[ >][\s\S]*?<\/w:tbl>)/g;
-    let blockMatch;
+    // --- PHASE 53.1: SEMANTIC DOM PARSING ---
+    // Iterate through body children (Paragraphs and Tables) in order
+    const body = xmlDoc.getElementsByTagName("w:body")[0];
+    if (!body) throw new Error("Invalid OOXML: Missing body element.");
 
-    while ((blockMatch = blockRegex.exec(xmlString)) !== null) {
-        const pBlock = blockMatch[0];
+    const children = Array.from(body.childNodes);
 
-        if (pBlock.startsWith('<w:p')) {
-            // --- 1. HANDLE EMBEDDED IMAGES ---
-            const drawingRegex = /<w:drawing[\s\S]*?<a:blip[^>]*r:embed="([^"]+)"/g;
-            let drawingMatch;
-            while ((drawingMatch = drawingRegex.exec(pBlock)) !== null) {
-                const rId = drawingMatch[1];
-                const target = relsMap[rId];
-                if (target) {
-                    const imgPath = target.startsWith('word/') ? target : `word/${target}`;
-                    const imgFile = zip.file(imgPath);
-                    if (imgFile) {
-                        const imgData = await imgFile.async("uint8array");
-                        let pdfImage = null;
-                        try {
-                            if (imgPath.toLowerCase().endsWith('.png')) {
-                                pdfImage = await pdfDoc.embedPng(imgData);
-                            } else if (imgPath.toLowerCase().match(/\.jpe?g$/)) {
-                                pdfImage = await pdfDoc.embedJpg(imgData);
-                            }
-                        } catch (e) {
-                            console.error("Failed to embed image", e);
-                        }
+    for (const node of children) {
+        const nodeName = (node as any).nodeName;
 
-                        if (pdfImage) {
-                            const imgDims = pdfImage.scale(0.5); // Default scale
-                            const drawWidth = Math.min(imgDims.width, width - margin * 2);
-                            const drawHeight = imgDims.height * (drawWidth / imgDims.width);
+        if (nodeName === "w:p") {
+            const pNode = node as Element;
 
-                            if (currentYPts - drawHeight < margin) {
-                                page = pdfDoc.addPage([595.28, 841.89]);
-                                currentYPts = height - margin;
+            // 1. HANDLE EMBEDDED IMAGES
+            const blips = pNode.getElementsByTagName("a:blip");
+            for (const blip of Array.from(blips)) {
+                const rId = blip.getAttribute("r:embed");
+                if (rId) {
+                    const target = relsMap[rId];
+                    if (target) {
+                        // PHASE 50.2: PATH INJECTION SECURITY
+                        const sanitizedTarget = target.replace(/\.\.\//g, '');
+                        const imgPath = sanitizedTarget.startsWith('word/') ? sanitizedTarget : `word/${sanitizedTarget}`;
+                        const imgFile = zip.file(imgPath);
+                        if (imgFile) {
+                            const imgData = await imgFile.async("uint8array");
+                            let pdfImage = null;
+                            try {
+                                if (imgPath.toLowerCase().endsWith('.png')) {
+                                    pdfImage = await pdfDoc.embedPng(imgData);
+                                } else if (imgPath.toLowerCase().match(/\.jpe?g$/)) {
+                                    pdfImage = await pdfDoc.embedJpg(imgData);
+                                }
+                            } catch (e) {
+                                console.error("Failed to embed image", e);
                             }
 
-                            currentYPts -= drawHeight;
-                            page.drawImage(pdfImage, {
-                                x: margin,
-                                y: currentYPts,
-                                width: drawWidth,
-                                height: drawHeight
-                            });
-                            currentYPts -= 20; // padding below image
+                            if (pdfImage) {
+                                const imgDims = pdfImage.scale(0.5); // Default scale
+                                const drawWidth = Math.min(imgDims.width, width - margin * 2);
+                                const drawHeight = imgDims.height * (drawWidth / imgDims.width);
+
+                                if (currentYPts - drawHeight < margin) {
+                                    page = pdfDoc.addPage([595.28, 841.89]);
+                                    currentYPts = height - margin;
+                                }
+
+                                currentYPts -= drawHeight;
+                                page.drawImage(pdfImage, {
+                                    x: margin,
+                                    y: currentYPts,
+                                    width: drawWidth,
+                                    height: drawHeight
+                                });
+                                currentYPts -= 20; // padding below image
+                            }
                         }
                     }
                 }
             }
 
-            // --- 2. HANDLE TEXT ---
-            const textRegex = /<w:t[^>]*>(.*?)<\/w:t>/g;
-            let match;
+            // 2. HANDLE TEXT
+            const textNodes = pNode.getElementsByTagName("w:t");
             let pText = "";
-            while ((match = textRegex.exec(pBlock)) !== null) {
-                pText += match[1].replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'");
+            for (const t of Array.from(textNodes)) {
+                pText += t.textContent || "";
             }
 
             if (pText.trim() === "") {
@@ -192,9 +213,7 @@ export async function officeToPdf(file: File, options: OfficeToPdfOptions = {}):
                 continue;
             }
 
-            const isBold = pBlock.includes('<w:b/>') || pBlock.includes('<w:b ');
-            const _isItalic = pBlock.includes('<w:i/>') || pBlock.includes('<w:i ');
-
+            const isBold = pNode.getElementsByTagName("w:b").length > 0;
             const words = pText.split(' ');
             let currentLine = '';
             const currentFont = isBold ? boldFont : font;
@@ -223,20 +242,15 @@ export async function officeToPdf(file: File, options: OfficeToPdfOptions = {}):
             page.drawText(currentLine, { x: margin, y: currentYPts, size: 12, font: currentFont, color: rgb(0, 0, 0) });
             currentYPts -= lineHeight * 1.5;
 
-        } else if (pBlock.startsWith('<w:tbl')) {
-            // --- 3. HANDLE TABLES ---
-            const rowRegex = /<w:tr[ >][\s\S]*?<\/w:tr>/g;
-            let rowMatch;
+        } else if (nodeName === "w:tbl") {
+            // 3. HANDLE TABLES
+            const tblNode = node as Element;
+            const rows = tblNode.getElementsByTagName("w:tr");
             currentYPts -= 10; // Padding before table
 
-            while ((rowMatch = rowRegex.exec(pBlock)) !== null) {
-                const rowStr = rowMatch[0];
-
-                // Count cells to determine equal width
-                let numCells = 0;
-                const countRegex = /<w:tc[ >]/g;
-                while (countRegex.exec(rowStr) !== null) numCells++;
-
+            for (const row of Array.from(rows)) {
+                const cells = row.getElementsByTagName("w:tc");
+                const numCells = cells.length;
                 if (numCells === 0) continue;
 
                 const actualColWidth = (width - margin * 2) / numCells;
@@ -247,18 +261,14 @@ export async function officeToPdf(file: File, options: OfficeToPdfOptions = {}):
                     currentYPts = height - margin;
                 }
 
-                const cellRegex = /<w:tc[ >][\s\S]*?<\/w:tc>/g;
-                let cellMatch;
                 let cellIndex = 0;
                 const startY = currentYPts;
 
-                while ((cellMatch = cellRegex.exec(rowStr)) !== null) {
-                    const cellStr = cellMatch[0];
-                    const textRegex = /<w:t[^>]*>(.*?)<\/w:t>/g;
-                    let match;
+                for (const cell of Array.from(cells)) {
+                    const cellTextNodes = cell.getElementsByTagName("w:t");
                     let cText = "";
-                    while ((match = textRegex.exec(cellStr)) !== null) {
-                        cText += match[1].replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'");
+                    for (const t of Array.from(cellTextNodes)) {
+                        cText += t.textContent || "";
                     }
 
                     const cellX = margin + (cellIndex * actualColWidth);
@@ -271,7 +281,6 @@ export async function officeToPdf(file: File, options: OfficeToPdfOptions = {}):
                         borderWidth: 1,
                     });
 
-                    // Cap text to avoid overflowing cell visually (in a full engine we'd wrap)
                     let displayTxt = cText.trim();
                     if (font.widthOfTextAtSize(displayTxt, 10) > actualColWidth - 10) {
                         displayTxt = displayTxt.substring(0, Math.floor(actualColWidth / 6)) + "..";
