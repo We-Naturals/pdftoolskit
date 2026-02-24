@@ -8,9 +8,7 @@ import {
     addPageNumbers,
     setMetadata,
     reversePDF,
-    extractPages,
-    burstPDF,
-    convertPDFToImages
+    extractPages
 } from '@/lib/pdf-utils';
 
 export interface WorkflowStrategy {
@@ -115,29 +113,6 @@ export class ExtractStrategy implements WorkflowStrategy {
     }
 }
 
-export class BurstStrategy implements WorkflowStrategy {
-    async execute(files: File[], _settings: any): Promise<File[]> {
-        const splitResults = await Promise.all(files.map(async (file) => {
-            return await burstPDF(file);
-        }));
-        return splitResults.flat();
-    }
-}
-
-export class ConvertToImageStrategy implements WorkflowStrategy {
-    async execute(files: File[], settings: any): Promise<File[]> {
-        const allFiles: File[] = [];
-        for (const file of files) {
-            const format = settings.format || 'png';
-            const generator = convertPDFToImages(file, { format });
-            for await (const img of generator) {
-                allFiles.push(img);
-            }
-        }
-        return allFiles;
-    }
-}
-
 export const WORKFLOW_STRATEGIES: Record<string, WorkflowStrategy> = {
     'merge': new MergeStrategy(),
     'rotate': new RotateStrategy(),
@@ -148,6 +123,4 @@ export const WORKFLOW_STRATEGIES: Record<string, WorkflowStrategy> = {
     'metadata': new MetadataStrategy(),
     'reorder': new ReverseStrategy(),
     'extract': new ExtractStrategy(),
-    'split': new BurstStrategy(),
-    'pdfToImage': new ConvertToImageStrategy(),
 };

@@ -14,8 +14,11 @@ export type ScanFilter = 'original' | 'grayscale' | 'bw' | 'high-contrast';
 
 export function applyScanFilter(ctx: CanvasRenderingContext2D, width: number, height: number, filter: ScanFilter) {
     const imageData = ctx.getImageData(0, 0, width, height);
-    const data = imageData.data;
+    applyScanFilterOnData(imageData.data, width, height, filter);
+    ctx.putImageData(imageData, 0, 0);
+}
 
+export function applyScanFilterOnData(data: Uint8ClampedArray, _width: number, _height: number, filter: ScanFilter) {
     for (let i = 0; i < data.length; i += 4) {
         // eslint-disable-next-line security/detect-object-injection
         const r = data[i];
@@ -42,8 +45,6 @@ export function applyScanFilter(ctx: CanvasRenderingContext2D, width: number, he
             data[i + 2] = factor * (b - 128) + 128;
         }
     }
-
-    ctx.putImageData(imageData, 0, 0);
 }
 
 /**

@@ -11,7 +11,9 @@ const ASSETS_TO_CACHE = [
 self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME).then((cache) => {
-            return cache.addAll(ASSETS_TO_CACHE);
+            return cache.addAll(ASSETS_TO_CACHE).catch(err => {
+                console.warn('SW: Some assets failed to cache:', err);
+            });
         })
     );
 });

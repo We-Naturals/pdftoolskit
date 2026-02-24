@@ -7,7 +7,7 @@ import { FileUpload } from '@/components/shared/FileUpload';
 import { ProgressBar } from '@/components/shared/ProgressBar';
 import { Button } from '@/components/ui/Button';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { PptxService } from '@/lib/services/pdf/converters/pdfToPptx';
+import { globalWorkerPool } from '@/lib/utils/worker-pool';
 import { downloadFile, validatePDFFile, cn, formatFileSize } from '@/lib/utils';
 import { toolGuides } from '@/data/guides';
 import { QuickGuide } from '@/components/shared/QuickGuide';
@@ -57,7 +57,10 @@ export default function PDFToPowerPointPage() {
                 });
             }, 500);
 
-            const pptxBytes = await PptxService.convert(file, { mode });
+            const pptxBytes = await globalWorkerPool.runTask<Uint8Array>('PDF_TO_PPTX', {
+                fileData: await file.arrayBuffer(),
+                options: { mode }
+            });
 
             clearInterval(interval);
             setProgress(100);
@@ -81,7 +84,7 @@ export default function PDFToPowerPointPage() {
     return (
         <div className="container mx-auto px-4 py-12 lg:py-20 max-w-6xl">
             <ToolHeader
-                toolId="pdfToPowerpoint"
+                toolId="pdfToPowerPoint"
                 title="PDF to PowerPoint"
                 description="Advanced Presentation Reconstruction: Transform static PDFs into editable PowerPoint decks."
                 icon={Presentation}
@@ -227,7 +230,7 @@ export default function PDFToPowerPointPage() {
             <div className="mt-20">
                 <QuickGuide steps={toolGuides['/pdf-to-powerpoint']} />
                 <ToolContent toolName="/pdf-to-powerpoint" />
-                <RelatedTools currentToolHref="/pdf-to-powerpoint" />
+                <RelatedTools currentToolId="pdfToPowerPoint" />
             </div>
         </div>
     );

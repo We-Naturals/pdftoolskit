@@ -7,7 +7,7 @@ import { FileUpload } from '@/components/shared/FileUpload';
 import { ProgressBar } from '@/components/shared/ProgressBar';
 import { Button } from '@/components/ui/Button';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { flattenPDF } from '@/lib/pdf-utils';
+import { globalWorkerPool } from '@/lib/utils/worker-pool';
 import { downloadFile, validatePDFFile, getBaseFileName, cn } from '@/lib/utils';
 import { toolGuides } from '@/data/guides';
 import { QuickGuide } from '@/components/shared/QuickGuide';
@@ -64,7 +64,10 @@ export default function FlattenPDFPage() {
             }, 300);
 
             setStatusMessage('Baking annotations into content...');
-            const newPdfBytes = await flattenPDF(file, options);
+            const newPdfBytes = await globalWorkerPool.runTask<Uint8Array>('FLATTEN_PDF', {
+                fileData: await file.arrayBuffer(),
+                options
+            });
 
             clearInterval(progressInterval);
             setProgress(100);
@@ -272,7 +275,7 @@ export default function FlattenPDFPage() {
             <div className="mt-20">
                 <QuickGuide steps={toolGuides['/flatten-pdf']} />
                 <ToolContent toolName="/flatten-pdf" />
-                <RelatedTools currentToolHref="/flatten-pdf" />
+                <RelatedTools currentToolId="flattenPdf" />
             </div>
         </div>
     );

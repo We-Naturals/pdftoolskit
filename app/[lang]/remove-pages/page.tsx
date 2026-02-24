@@ -218,7 +218,7 @@ export default function RemovePagesPage() {
 
             <QuickGuide steps={toolGuides['/remove-pages']} />
             <ToolContent toolName="/remove-pages" />
-            <RelatedTools currentToolHref="/remove-pages" />
+            <RelatedTools currentToolId="removePages" />
         </div>
     );
 }

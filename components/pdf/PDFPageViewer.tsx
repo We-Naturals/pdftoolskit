@@ -1,14 +1,8 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import * as pdfjsLib from 'pdfjs-dist';
+import { pdfjsLib } from '@/lib/utils/pdf-init';
 import { Loader2 } from 'lucide-react';
-
-// Configure worker
-if (typeof window !== 'undefined' && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
-    // eslint-disable-next-line security/detect-object-injection
-    pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
-}
 
 interface PDFPageViewerProps {
     file: File | null;

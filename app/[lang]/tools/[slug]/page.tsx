@@ -10,7 +10,10 @@ import { MergeTool } from '@/components/tools/MergeTool';
 import { RotateTool } from '@/components/tools/RotateTool';
 import { ScanTool } from '@/components/tools/ScanTool';
 import { PDFToWordTool } from '@/components/tools/PDFToWordTool';
-import { ChatTool } from '@/components/tools/ChatTool';
+import dynamic from 'next/dynamic';
+const ChatTool = dynamic(() => import('@/components/tools/ChatTool').then(mod => mod.ChatTool), {
+    ssr: false,
+});
 import { ToolHeader } from '@/components/shared/ToolHeader';
 // import { Lucide } from '@/lib/lucide-registry';
 

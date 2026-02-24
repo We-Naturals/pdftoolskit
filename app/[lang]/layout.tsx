@@ -78,14 +78,22 @@ const baseMetadata: Metadata = {
 };
 
 export async function generateMetadata({ params }: { params: { lang: string } }): Promise<Metadata> {
-    const headersList = headers();
-    const purePath = headersList.get('x-pure-path') || '';
     const baseUrl = 'https://pdftoolskit.vercel.app';
+    
+    // During static generation (npm run build), headers() might fail or return empty.
+    // We fallback to root path if we can't determine the pure path from headers.
+    let purePath = '';
+    try {
+        const headersList = headers();
+        purePath = headersList.get('x-pure-path') || '';
+    } catch (_e) {
+        // Fallback for static generation
+        purePath = '';
+    }
 
     // Generate alternates (hreflang)
     const languages: Record<string, string> = {};
     i18n.locales.forEach(locale => {
-        // e.g. https://pdftoolskit.com/es/merge-pdf
         // eslint-disable-next-line security/detect-object-injection
         languages[locale] = `${baseUrl}/${locale}${purePath}`;
     });

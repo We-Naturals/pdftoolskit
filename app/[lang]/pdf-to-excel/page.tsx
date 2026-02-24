@@ -7,7 +7,8 @@ import { FileUpload } from '@/components/shared/FileUpload';
 import { ProgressBar } from '@/components/shared/ProgressBar';
 import { Button } from '@/components/ui/Button';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { pdfToExcel, PdfToExcelOptions } from '@/lib/services/pdf/converters/pdfToExcel';
+import { globalWorkerPool } from '@/lib/utils/worker-pool';
+import { PdfToExcelOptions } from '@/lib/services/pdf/converters/pdfToExcel';
 import { downloadFile, getBaseFileName } from '@/lib/utils';
 import { toolGuides } from '@/data/guides';
 import { QuickGuide } from '@/components/shared/QuickGuide';
@@ -57,7 +58,11 @@ export default function PDFToExcelPage() {
                 detectNumbers
             };
 
-            const excelBytes = await pdfToExcel(file, options);
+            const excelBytes = await globalWorkerPool.runTask<Uint8Array>('PDF_TO_EXCEL', {
+                fileData: await file.arrayBuffer(),
+                options
+            });
+
             clearInterval(progressInterval);
             setProgress(100);
 
@@ -221,7 +226,7 @@ export default function PDFToExcelPage() {
                         </div>
                     </GlassCard>
 
-                    <RelatedTools currentToolHref="/pdf-to-excel" />
+                    <RelatedTools currentToolId="pdfToExcel" />
                 </div>
             </div>
 

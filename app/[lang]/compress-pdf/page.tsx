@@ -40,7 +40,7 @@ export default function CompressPDFPage() {
             <ToolContent toolName="/compress-pdf" />
 
             {/* Related Tools */}
-            <RelatedTools currentToolHref="/compress-pdf" />
+            <RelatedTools currentToolId="compressPdf" />
         </div>
     );
 }

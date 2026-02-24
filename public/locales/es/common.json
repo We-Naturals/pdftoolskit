@@ -70,7 +70,54 @@
         "privacy": "Política de Privacidad",
         "terms": "Términos de Servicio",
         "contact": "Contacto",
-        "copyright": "© {{year}} PDFToolskit. Todos los derechos reservados. Construido con ❤️ para todos."
+        "developerName": "Saif Qadri",
+        "builtBy": "Construido con ❤️ por {{name}} para todos.",
+        "copyright": "© {{year}} PDFToolskit. Todos los derechos reservados."
+    },
+    "about": {
+        "hero": {
+            "title": "Herramientas PDF Primero la Privacidad",
+            "subtitle": "PDFToolskit fue construido con una misión simple: proporcionar herramientas PDF de clase mundial que respeten tu privacidad."
+        },
+        "philosophy": {
+            "zeroServer": {
+                "title": "Modelo de Cero Servidor",
+                "content": "La mayoría de las herramientas PDF suben tus archivos. En PDFToolskit, tus archivos se quedan **en tu dispositivo**.",
+                "subContent": "Usamos WebAssembly para procesar todo en tu navegador."
+            },
+            "speed": {
+                "title": "Velocidad Ultrarrápida",
+                "content": "Sin subidas ni descargas, el procesamiento es instantáneo.",
+                "features": [
+                    "Sin esperas de subida",
+                    "Sin retrasos de descarga",
+                    "Funciona sin conexión",
+                    "Aceleración por hardware"
+                ]
+            }
+        },
+        "ai": {
+            "title": "Integración de IA Segura",
+            "subtitle": "IA de próxima generación sin compromisos.",
+            "local": {
+                "title": "Aprendizaje Local",
+                "desc": "Nuestros modelos corren en la memoria de tu navegador."
+            },
+            "training": {
+                "title": "Sin Datos de Entrenamiento",
+                "desc": "Nunca usamos tus documentos para entrenar modelos."
+            },
+            "private": {
+                "title": "Privado por Diseño",
+                "desc": "Auditado para asegurar tu privacidad."
+            }
+        },
+        "cta": {
+            "title": "¿Listo para procesar archivos?",
+            "subtitle": "Únete a los miles de usuarios que confían en PDFToolskit.",
+            "button": "Explorar Herramientas",
+            "back": "Volver al Inicio"
+        }
     },
     "tools": {
         "mergePdf": "Unir PDF",

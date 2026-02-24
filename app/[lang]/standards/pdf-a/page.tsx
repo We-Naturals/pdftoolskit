@@ -6,7 +6,7 @@ import { Lucide } from '@/lib/lucide-registry';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { FileUpload } from '@/components/shared/FileUpload';
 import { Button } from '@/components/ui/Button';
-import { convertToPdfA } from '@/lib/services/pdf/standards/pdfA';
+import { globalWorkerPool } from '@/lib/utils/worker-pool';
 import { downloadFile, formatFileSize } from '@/lib/utils';
 import toast from 'react-hot-toast';
 import { ProcessingOverlay } from '@/components/shared/ProcessingOverlay';
@@ -38,7 +38,9 @@ export default function PdfAPage() {
         setIsProcessing(true);
         try {
             const buffer = await file.arrayBuffer();
-            const pdfABuffer = await convertToPdfA(new Uint8Array(buffer)); // This runs client-side
+            const pdfABuffer = await globalWorkerPool.runTask<Uint8Array>('CONVERT_PDFA', {
+                fileData: new Uint8Array(buffer)
+            });
 
             const blob = new Blob([pdfABuffer as unknown as BlobPart], { type: 'application/pdf' });
 
@@ -144,7 +146,7 @@ export default function PdfAPage() {
 
             <QuickGuide steps={toolGuides['/standards/pdf-a']} />
             <ToolContent toolName="/standards/pdf-a" />
-            <RelatedTools currentToolHref="/standards/pdf-a" />
+            <RelatedTools currentToolId="pdfA" />
         </div>
     );
 }

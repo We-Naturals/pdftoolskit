@@ -1,0 +1,10 @@
+*
+!scripts
+!scripts/*
+!scripts/**/*
+!Dockerfile.wasm-builder
+node_modules
+.next
+.git
+.vscode
+public/wasm

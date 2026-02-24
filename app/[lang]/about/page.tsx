@@ -55,12 +55,14 @@ export default function AboutPage() {
                             {t('about.philosophy.speed.content')}
                         </p>
                         <ul className="space-y-3">
-                            {(t('about.philosophy.speed.features', { returnObjects: true }) as string[]).map((item) => (
-                                <li key={item} className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-                                    <Star className="w-3 h-3 text-secondary" />
-                                    {item}
-                                </li>
-                            ))}
+                            {Array.isArray(t('about.philosophy.speed.features', { returnObjects: true })) &&
+                                (t('about.philosophy.speed.features', { returnObjects: true }) as string[]).map((item) => (
+                                    <li key={item} className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+                                        <Star className="w-3 h-3 text-secondary" />
+                                        {item}
+                                    </li>
+                                ))
+                            }
                         </ul>
                     </div>
                 </GlassCard>

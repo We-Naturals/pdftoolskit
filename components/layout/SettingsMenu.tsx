@@ -61,7 +61,8 @@ export function SettingsMenu() {
     useEffect(() => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const handler = (e: any) => {
-            e.preventDefault();
+            // Remove preventDefault() to allow the browser's default banner to show
+            // e.preventDefault(); 
             setDeferredPrompt(e);
             setShowInstall(true);
         };

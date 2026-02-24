@@ -77,7 +77,8 @@
         "newsletterTitle": "Sign up to our newsletter",
         "newsletterPlaceholder": "Enter your email",
         "newsletterSubmit": "Submit",
-        "builtBy": "Built with ❤️ by Saif Qadri for everyone.",
+        "developerName": "Saif Qadri",
+        "builtBy": "Built with ❤️ by {{name}} for everyone.",
         "copyright": "© {{year}} PDFToolskit. All rights reserved."
     },
     "tools": {
@@ -150,7 +151,19 @@
         "pdfA": "PDF/A Converter",
         "pdfADesc": "Convert PDF to long-term archiving format",
         "printReadyPdf": "Print-Ready PDF",
-        "printReadyPdfDesc": "Prepare PDF for professional printing (CMYK)"
+        "printReadyPdfDesc": "Prepare PDF for professional printing (CMYK)",
+        "visual-diff": "Visual Diff",
+        "visual-diffDesc": "Compare two PDF documents with overlay and split-screen modes.",
+        "mail-merge": "Mail Merge",
+        "mail-mergeDesc": "Generate bulk PDFs from CSV data and templates.",
+        "memory-palace": "Memory Palace",
+        "memory-palaceDesc": "Spatial 3D document organization.",
+        "bio-encode": "Bio-Encode",
+        "bio-encodeDesc": "Store documents in synthetic DNA format.",
+        "agent-teacher": "Agent Trainer",
+        "agent-teacherDesc": "Teach the AI new commands via few-shot learning.",
+        "bates-stamp": "Bates Stamp",
+        "bates-stampDesc": "Legal-grade sequential page numbering for discovery."
     },
     "toasts": {
         "filesAdded": "Added {{count}} file(s)",

@@ -6,7 +6,8 @@ import rehypeRaw from 'rehype-raw';
 
 
 interface ToolContentProps {
-    toolName: string;
+    toolName?: string;
+    children?: React.ReactNode;
 }
 
 function cleanHtmlContent(html: string) {
@@ -52,8 +53,11 @@ function cleanHtmlContent(html: string) {
     return cleaned.trim();
 }
 
-export function ToolContent({ toolName }: ToolContentProps) {
+export function ToolContent({ toolName, children }: ToolContentProps) {
     const { t, i18n } = useTranslation('seo');
+
+    // If no toolName is provided, just render children
+    if (!toolName) return <section className="mt-8 mb-12">{children}</section>;
 
     // Check if translation exists in the current language
     const hasTranslation = i18n.hasResourceBundle(i18n.language, 'seo') &&
@@ -64,44 +68,40 @@ export function ToolContent({ toolName }: ToolContentProps) {
         // eslint-disable-next-line security/detect-object-injection
         : toolSeoContent[toolName];
 
-    if (!rawContent) return null;
-
-    const content = {
-        ...rawContent,
-        htmlContext: cleanHtmlContent(rawContent.htmlContext)
-    };
-
     return (
-        <section className="mt-20 mb-12">
-            <GlassCard className="p-8 lg:p-12 relative overflow-hidden" animate={false}>
-                {/* Decoration Background */}
-                <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none" />
-                <div className="absolute bottom-0 left-0 w-64 h-64 bg-secondary/5 rounded-full blur-3xl -ml-32 -mb-32 pointer-events-none" />
+        <section className="mt-8 mb-12 space-y-20">
+            {children && <div>{children}</div>}
 
-                <div className="relative z-10 max-w-4xl mx-auto">
-                    <h2 className="text-3xl font-heading font-bold text-slate-900 dark:text-white mb-8 border-b border-slate-200 dark:border-white/10 pb-4">
-                        {content.title}
-                    </h2>
+            {rawContent && (
+                <GlassCard className="p-8 lg:p-12 relative overflow-hidden" animate={false}>
+                    {/* Decoration Background */}
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none" />
+                    <div className="absolute bottom-0 left-0 w-64 h-64 bg-secondary/5 rounded-full blur-3xl -ml-32 -mb-32 pointer-events-none" />
 
-                    <div className="space-y-6 text-slate-600 dark:text-slate-300">
-                        <ReactMarkdown
-                            rehypePlugins={[rehypeRaw]}
-                            components={{
-                                h3: ({ ...props }) => <h3 className="text-xl font-bold text-slate-900 dark:text-white mt-8 mb-4" {...props} />,
-                                p: ({ ...props }) => <p className="mb-4 leading-relaxed" {...props} />,
-                                ul: ({ ...props }) => <ul className="list-disc list-inside ml-4 space-y-2 mb-6" {...props} />,
-                                li: ({ ...props }) => <li className="marker:text-primary" {...props} />,
-                                a: ({ ...props }) => <a className="text-primary hover:underline font-medium transition-colors" target="_blank" rel="noopener noreferrer" {...props} />,
-                                strong: ({ ...props }) => <strong className="font-bold text-slate-700 dark:text-slate-200" {...props} />,
-                                em: ({ ...props }) => <em className="italic text-slate-500 dark:text-slate-400" {...props} />,
-                            }}
-                        >
-                            {content.htmlContext}
-                        </ReactMarkdown>
+                    <div className="relative z-10 max-w-4xl mx-auto">
+                        <h2 className="text-3xl font-heading font-bold text-slate-900 dark:text-white mb-8 border-b border-slate-200 dark:border-white/10 pb-4">
+                            {rawContent.title}
+                        </h2>
+
+                        <div className="space-y-6 text-slate-600 dark:text-slate-300">
+                            <ReactMarkdown
+                                rehypePlugins={[rehypeRaw]}
+                                components={{
+                                    h3: ({ ...props }) => <h3 className="text-xl font-bold text-slate-900 dark:text-white mt-8 mb-4" {...props} />,
+                                    p: ({ ...props }) => <p className="mb-4 leading-relaxed" {...props} />,
+                                    ul: ({ ...props }) => <ul className="list-disc list-inside ml-4 space-y-2 mb-6" {...props} />,
+                                    li: ({ ...props }) => <li className="marker:text-primary" {...props} />,
+                                    a: ({ ...props }) => <a className="text-primary hover:underline font-medium transition-colors" target="_blank" rel="noopener noreferrer" {...props} />,
+                                    strong: ({ ...props }) => <strong className="font-bold text-slate-700 dark:text-slate-200" {...props} />,
+                                    em: ({ ...props }) => <em className="italic text-slate-500 dark:text-slate-400" {...props} />,
+                                }}
+                            >
+                                {cleanHtmlContent(rawContent.htmlContext)}
+                            </ReactMarkdown>
+                        </div>
                     </div>
-                </div>
-
-            </GlassCard>
+                </GlassCard>
+            )}
         </section>
     );
 }

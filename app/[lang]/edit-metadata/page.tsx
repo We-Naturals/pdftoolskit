@@ -7,7 +7,7 @@ import { FileUpload } from '@/components/shared/FileUpload';
 // import { ProgressBar } from '@/components/shared/ProgressBar';
 import { Button } from '@/components/ui/Button';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { updateMetadata, getMetadata, stripMetadata } from '@/lib/pdf-utils';
+import { globalWorkerPool } from '@/lib/utils/worker-pool';
 import { downloadFile, validatePDFFile, getBaseFileName } from '@/lib/utils';
 import { toolGuides } from '@/data/guides';
 import { QuickGuide } from '@/components/shared/QuickGuide';
@@ -47,7 +47,9 @@ export default function EditMetadataPage() {
 
     const loadMetadata = async (file: File) => {
         try {
-            const data = await getMetadata(file);
+            const data = await globalWorkerPool.runTask<any>('GET_METADATA', {
+                fileData: await file.arrayBuffer()
+            });
 
             setMetadata({
                 title: data.title || '',
@@ -104,7 +106,9 @@ export default function EditMetadataPage() {
 
         setProcessing(true);
         try {
-            const newPdfBytes = await stripMetadata(file);
+            const newPdfBytes = await globalWorkerPool.runTask<Uint8Array>('STRIP_METADATA', {
+                fileData: await file.arrayBuffer()
+            });
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const blob = new Blob([newPdfBytes as any], { type: 'application/pdf' });
             downloadFile(blob, `${getBaseFileName(file.name)}_anonymized.pdf`);
@@ -123,11 +127,14 @@ export default function EditMetadataPage() {
         setProgress(0);
 
         try {
-            const newPdfBytes = await updateMetadata(file, {
-                ...metadata,
-                keywords: metadata.keywords.split(',').map(k => k.trim()).filter(k => k),
-                creationDate: metadata.creationDate ? new Date(metadata.creationDate) : undefined,
-                modificationDate: metadata.modificationDate ? new Date(metadata.modificationDate) : undefined
+            const newPdfBytes = await globalWorkerPool.runTask<Uint8Array>('EDIT_METADATA', {
+                fileData: await file.arrayBuffer(),
+                metadata: {
+                    ...metadata,
+                    keywords: metadata.keywords.split(',').map(k => k.trim()).filter(k => k),
+                    creationDate: metadata.creationDate ? new Date(metadata.creationDate) : undefined,
+                    modificationDate: metadata.modificationDate ? new Date(metadata.modificationDate) : undefined
+                }
             });
 
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -353,7 +360,7 @@ export default function EditMetadataPage() {
             <div className="mt-20">
                 <QuickGuide steps={toolGuides['/edit-metadata']} />
                 <ToolContent toolName="/edit-metadata" />
-                <RelatedTools currentToolHref="/edit-metadata" />
+                <RelatedTools currentToolId="editMetadata" />
             </div>
         </div>
     );

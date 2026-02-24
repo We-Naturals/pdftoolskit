@@ -94,7 +94,7 @@ export default function BlogPostPage({ params }: BlogPostPageProps) {
             {/* Related Tools Suggestion */}
             <div className="mt-16">
                 <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-8 text-center">Try Our Tools</h3>
-                <RelatedTools currentToolHref="/blog" />
+                <RelatedTools currentToolId="blog" />
             </div>
         </div>
     );

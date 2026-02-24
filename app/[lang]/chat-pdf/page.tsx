@@ -5,7 +5,10 @@ import React from 'react';
 // import { AdSense } from '@/components/shared/AdSense';
 import { RelatedTools } from '@/components/shared/RelatedTools';
 import { ToolContent } from '@/components/shared/ToolContent';
-import { ChatTool } from '@/components/tools/ChatTool';
+import dynamic from 'next/dynamic';
+const ChatTool = dynamic(() => import('@/components/tools/ChatTool').then(mod => mod.ChatTool), {
+    ssr: false,
+});
 import { FeatureGate } from '@/components/shared/FeatureGate';
 import { MessageSquare } from 'lucide-react';
 import { ToolHeader } from '@/components/shared/ToolHeader';
@@ -31,7 +34,7 @@ export default function ChatPDFPage() {
 
                 <div className="mt-12">
                     <ToolContent toolName="/chat-pdf" />
-                    <RelatedTools currentToolHref="/chat-pdf" />
+                    <RelatedTools currentToolId="chatPdf" />
                 </div>
             </div>
         </FeatureGate>

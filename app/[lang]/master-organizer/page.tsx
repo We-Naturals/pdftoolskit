@@ -597,7 +597,7 @@ export default function MasterOrganizerPage() {
 
             <div className="mt-12">
                 <ToolContent toolName="/master-organizer" />
-                <RelatedTools currentToolHref="/master-organizer" />
+                <RelatedTools currentToolId="masterOrganizer" />
             </div>
         </div>
     );

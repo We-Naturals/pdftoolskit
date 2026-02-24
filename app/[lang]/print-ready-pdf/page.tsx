@@ -6,7 +6,8 @@ import { Lucide } from '@/lib/lucide-registry';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { FileUpload } from '@/components/shared/FileUpload';
 import { Button } from '@/components/ui/Button';
-import { convertImagesToPrintPdf, PrintSize } from '@/lib/services/pdf/print/imageToPrintPdf';
+import { globalWorkerPool } from '@/lib/utils/worker-pool';
+import { PrintSize } from '@/lib/services/pdf/print/imageToPrintPdf';
 import { downloadFile } from '@/lib/utils';
 import toast from 'react-hot-toast';
 import { ProcessingOverlay } from '@/components/shared/ProcessingOverlay';
@@ -49,12 +50,15 @@ export default function PrintReadyPdfPage() {
                 }))
             );
 
-            const pdfBuffer = await convertImagesToPrintPdf(fileBuffers, {
-                dpi,
-                pageSize,
-                bleed,
-                cropMarks,
-                colorBars
+            const pdfBuffer = await globalWorkerPool.runTask<Uint8Array>('PRINT_READY_PDF', {
+                files: fileBuffers,
+                options: {
+                    dpi,
+                    pageSize,
+                    bleed,
+                    cropMarks,
+                    colorBars
+                }
             });
             const blob = new Blob([pdfBuffer as unknown as BlobPart], { type: 'application/pdf' });
 
@@ -233,7 +237,7 @@ export default function PrintReadyPdfPage() {
 
             <QuickGuide steps={toolGuides['/print-ready-pdf']} />
             <ToolContent toolName="/print-ready-pdf" />
-            <RelatedTools currentToolHref="/print-ready-pdf" />
+            <RelatedTools currentToolId="printReadyPdf" />
         </div >
     );
 }

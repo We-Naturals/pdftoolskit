@@ -154,4 +154,14 @@ export const toolGuides: Record<string, { title: string; description: string }[]
         { title: 'Set Print DPI', description: 'Select 300 DPI for professional printing results.' },
         { title: 'Generate PDF', description: 'Download your optimized PDF ready for any professional printer.' },
     ],
+    '/visual-diff': [
+        { title: 'Upload PDFs', description: 'Select the two PDF documents you want to compare.' },
+        { title: 'Choose Mode', description: 'Toggle between Overlay, Side-by-Side, or Curtain views.' },
+        { title: 'Analyze', description: 'Use Structural IQ or Diff Loupe to spot even the smallest changes.' },
+    ],
+    '/insta-scan': [
+        { title: 'Engage Camera', description: 'Grant camera permissions to activate the Insta-Scan engine.' },
+        { title: 'Real-time Framing', description: 'Watch as the GPU identifies document edges and frames them in AR.' },
+        { title: 'Capture & OCR', description: 'Snap the document once the green frame is locked for high-fidelity extraction.' },
+    ],
 };

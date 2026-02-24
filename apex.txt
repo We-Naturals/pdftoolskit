@@ -1,0 +1,65 @@
+ne Roadmap
+19 minutes ago
+
+Review
+The True Apex Engine: Uncompromising Architecture Roadmap
+To build a True Production-Ready "Apex Engine" that genuinely rivals industry titans (Adobe Acrobat, SmallPDF, ILovePDF), we must permanently abandon browser DOM heuristics, Regex parsing, and JavaScript polyfills.
+
+True file conversion requires mathematically deterministic layout engines compiled directly from massive C++ desktop application cores into WebAssembly (WASM), paired with hardware-accelerated Computer Vision mapping.
+
+This Master Roadmap outlines the monumental infrastructure required to achieve uncompromising, 100% accurate conversion fidelity.
+
+🌐 PHASE 32: The WebAssembly (WASM) Foundation Layer
+We cannot build a house on sand. We must compile enterprise-grade C++ desktop libraries into lightweight 
+.wasm
+ modules that can run at near-native speeds inside the browser worker threads.
+
+Batch 32.1: The Core Rendering Engine
+Compile LibreOffice Headless Subsystems: Strip down the LibreOffice source code (specifically its Writer and Calc rendering engines) and use Emscripten to compile them into apex-doc.wasm. This will handle the exact pixel-perfect calculation of margins, line heights, nested tables, and complex Office Open XML (OOXML) styles without relying on the browser's HTML DOM.
+Implement Virtual File System (VFS): WASM modules require a fake "hard drive" to read and write files. Build an in-memory VFS inside the Web Worker so apex-doc.wasm can dynamically expand DOCX/XLSX archives and read their binary XML streams immediately.
+Batch 32.2: The Hardware Mathematics Engine
+Compile OpenCV Core (WASM): Standard WebGPU shaders lack the complex mathematical topology algorithms required for accurate table mapping. Compile a stripped-down version of OpenCV (opencv.js/
+.wasm
+) to expose algorithms like cv2.findContours(), cv2.boundingRect(), and cv2.HoughLines().
+Compile Tesseract v5 LSTM (WASM): Ensure the underlying OCR engine operates with 100% memory isolation to prevent heap corruption during massive 100+ page scans.
+🎨 PHASE 33: The Universal Typography Registry (UTR)
+Fonts are the primary reason PDF conversions break. 99% of Word documents rely on OS-level system fonts (Arial, Calibri, Times New Roman, Segoe UI). We must ensure the engine never falls back to generic Helvetica.
+
+Batch 33.1: The Font Substitution Heuristic
+Create the Global Font Metric Database: Since we cannot legally bundle Apple/Microsoft proprietary TrueType fonts, we must build a massive JSON database mapping proprietary font metrics (character widths, kerning pairs, x-heights) to open-source OFL clones (e.g., Calibri -> Carlito, Arial -> Arimo).
+Mathematical Kerning Emulation: Program the WASM engine to force the substitute font to stretch or compress perfectly to match the original proprietary font's byte-width, ensuring line breaks happen at the exact same pixel boundaries.
+Batch 33.2: The Edge Font CDN API
+Dynamic Binary Fetching: When a user converts a document containing rare embedded fonts that aren't natively packaged in the OOXML, the worker will dynamically fetch compressed .woff2 font subsets from an Edge CDN (e.g., Cloudflare Workers) in milliseconds, rather than lagging the browser.
+👁️ PHASE 34: The WebGPU Morphological Forensic Engine
+Upgrading PDF-to-Excel and PDF-to-Word from text-guessing to true computer vision grid extraction.
+
+Batch 34.1: Seamless Grid Topology (Excel)
+High-Velocity Rasterization Pass: Offload PDF pages to an 
+OffscreenCanvas
+ WebGL context at 300 DPI.
+Hardware Dilation & Erosion Shaders: Pulse the WebGPU compute shaders to stretch dark pixels into contiguous morphological hulls (combining text blocks into massive black rects).
+OpenCV Contour Finding: Feed the shader output into the opencv.wasm module to execute findContours(). This generates perfect boundary boxes (X, Y, W, H) for every logical table cell—even if there are zero visible border lines drawn in the PDF.
+Batch 34.2: Vector Stroke Intersection (Word/Excel)
+PDF-Lib Operator Interception: Hook directly into the raw PDF binary stream and mathematically track the start and end coordinates of every single line drawn by OPS.moveTo and OPS.lineTo.
+Hough Line Transform: Run the OpenCV Hough Lines algorithm to detect table grids from these physical vector strokes, fusing broken lines and detecting merged cells perfectly before ever extracting a single word of text.
+🏗️ PHASE 35: Uncompromising Structural Generation
+Using the data harvested from the WASM and WebGPU engines to generate identical mirror-image files.
+
+Batch 35.1: The Headless PDF Writer (Word/PPT/Excel to PDF)
+Execute apex-doc.wasm Print Pass: Feed the raw Office file into the WASM LibreOffice rendering engine. The C++ code will parse the complex OOXML, compute the exact pagination logic utilized by Microsoft Office, apply the Typography metrics from Phase 33, and write a raw Vector PDF bytestream directly to memory.
+Zero DOM Degradation: This guarantees headers, footers, complex columns, floating images, and Z-index layering are 100% preserved.
+Batch 35.2: The Spatial Document Generator (PDF to Word)
+Absolute Positioning Layer: Utilize docx library (or native XML parsing) to inject absolute-floating text boxes anchored exactly to the geometric origin points provided by the layout analyzer.
+SVG Path Translation: Automatically translate PDF vector strokes into native Microsoft Office DrawingML (<a:path>) directives, ensuring charts, graphs, and vector shapes remain infinitely scalable vectors within the resulting Word document instead of rasterizing them to flat images.
+Batch 35.3: Intelligent Merged-Table Heuristics (PDF to Excel)
+Cross-Page Stitching Checksum: Implement robust column-header pattern matching algorithms. If page 2 has the exact same OpenCV contour layout geometry as the bottom of page 1, seamlessly fuse them into a single continuous Sheet1.xml array internally, stripping out fake header repetitions.
+🚀 PHASE 36: Ecosystem Hardening & Enterprise Scale
+To handle chaotic 1,000-page enterprise workloads without crashing the browser memory heap.
+
+Batch 36.1: Multi-Threaded Chunking
+Web Worker Orchestration: Instead of freezing the main thread, spawn 4+ independent Web Workers (depending on user CPU cores). Segment massive PDFs and farm pages out independently.
+SharedArrayBuffer Stitching: Utilize massive SharedArrayBuffer memory blocks to let workers communicate raw pixel data instantly without the extreme overhead of 
+postMessage
+ cloning.
+Batch 36.2: Graceful Grace Degradation (Mobile/Low-End)
+Fallback Pathways: Implement dynamic checks in navigator.gpu and navigator.hardwareConcurrency. If the user is on an old mobile phone lacking WebGPU or massive WASM memory, gracefully route conversions to legacy pure-JS heuristics (the Batch 31 implementations) or ping a secure Serverless Edge Function for off-loaded processing.

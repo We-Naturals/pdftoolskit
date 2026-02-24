@@ -9,8 +9,11 @@ interface QuickGuideProps {
     }[];
 }
 
-export function QuickGuide({ steps }: QuickGuideProps) {
+export function QuickGuide({ steps = [] }: QuickGuideProps) {
     const { t } = useTranslation('common');
+
+    if (!steps || steps.length === 0) return null;
+
     return (
         <section className="py-12">
             <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-8 text-center">
@@ -19,7 +22,7 @@ export function QuickGuide({ steps }: QuickGuideProps) {
                 </span>
             </h2>
             <div className="grid md:grid-cols-3 gap-6">
-                {steps.map((step, index) => (
+                {steps?.map((step, index) => (
                     <GlassCard key={index} className="p-6 relative group hover:border-blue-500/30 transition-colors">
                         <div className="absolute -top-4 -left-4 w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold shadow-lg shadow-blue-500/20">
                             {index + 1}

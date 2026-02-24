@@ -1,6 +1,8 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
-import HttpApi from 'i18next-http-backend';
+import resourcesToBackend from 'i18next-resources-to-backend';
+
+// Statically import English for immediate availability (fixes hydration errors)
 import commonEn from '../public/locales/en/common.json';
 import seoEn from '../public/locales/en/seo.json';
 
@@ -10,45 +12,38 @@ const supportedLngs = [
     'uk', 'vi', 'ur'
 ];
 
-const i18nInstance = i18n.use(initReactI18next);
+i18n
+    .use(initReactI18next)
+    .use(resourcesToBackend((language: string, namespace: string) => {
+        // Only use dynamic import for non-English languages
+        if (language === 'en') return Promise.resolve({});
 
-if (typeof window !== 'undefined') {
-    i18nInstance
-        .use(HttpApi);
-}
-
-i18nInstance.init({
-    lng: 'en', // Force initial language to match server (english)
-    debug: true,
-    partialBundledLanguages: true,
-    fallbackLng: 'en',
-    supportedLngs,
-    defaultNS: 'common',
-    ns: ['common', 'seo'],
-    fallbackNS: 'common',
-
-    resources: {
-        en: {
-            common: commonEn,
-            seo: seoEn,
+        return import(`../public/locales/${language}/${namespace}.json`)
+            .catch((err) => {
+                console.warn(`Failed to load i18n resource: ${language}/${namespace}`, err);
+                return {};
+            });
+    }))
+    .init({
+        lng: 'en',
+        fallbackLng: 'en',
+        supportedLngs,
+        defaultNS: 'common',
+        ns: ['common', 'seo'],
+        fallbackNS: 'common',
+        resources: {
+            en: {
+                common: commonEn,
+                seo: seoEn,
+            },
         },
-    },
-
-    backend: {
-        loadPath: '/locales/{{lng}}/{{ns}}.json',
-    },
-
-    interpolation: {
-        escapeValue: false,
-    },
-    detection: {
-        order: ['localStorage', 'navigator'],
-        caches: ['localStorage'],
-    },
-    react: {
-        useSuspense: false,
-    }
-});
+        interpolation: {
+            escapeValue: false,
+        },
+        react: {
+            useSuspense: false,
+        }
+    });
 
 export default i18n;
 

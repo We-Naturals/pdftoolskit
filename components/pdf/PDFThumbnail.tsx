@@ -41,6 +41,7 @@ export const PDFThumbnail = React.memo(function PDFThumbnail({
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
+    const [locked, setLocked] = useState(false);
 
     useEffect(() => {
         let worker: Worker | null = null;
@@ -49,6 +50,7 @@ export const PDFThumbnail = React.memo(function PDFThumbnail({
         const renderPage = async () => {
             setLoading(true);
             setError(false);
+            setLocked(false);
 
             if (typeof window !== 'undefined') {
                 try {
@@ -111,9 +113,17 @@ export const PDFThumbnail = React.memo(function PDFThumbnail({
                     bitmap.close();
                     setLoading(false);
                 }
+            } else if (type === 'LOCKED') {
+                setLoading(false);
+                setLocked(true);
             } else if (type === 'ERROR') {
-                console.error('Worker Error:', message);
-                setError(true);
+                // Suppress 'No password given' console spam if it leaks through
+                if (message && !message.includes('password given')) {
+                    console.error('Worker Error:', message);
+                    setError(true);
+                } else {
+                    setLocked(true);
+                }
                 setLoading(false);
             }
         };
@@ -151,15 +161,23 @@ export const PDFThumbnail = React.memo(function PDFThumbnail({
                             <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
                         </div>
                     )}
-                    {error && (
+                    {error && !locked && (
                         <div className="absolute inset-0 flex flex-col items-center justify-center z-10 text-red-400 text-xs">
                             <span className="text-2xl mb-1">⚠️</span>
                             Failed
                         </div>
                     )}
+                    {locked && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center z-10 text-orange-400 bg-slate-900/10 backdrop-blur-[2px]">
+                            <svg className="w-8 h-8 mb-2 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            </svg>
+                            <span className="text-[10px] font-black uppercase tracking-widest opacity-70">Locked PDF</span>
+                        </div>
+                    )}
                     <canvas
                         ref={canvasRef}
-                        className="max-w-full h-auto"
+                        className={cn("max-w-full h-auto", locked && "opacity-0")}
                         style={{
                             transform: `rotate(${rotation + (fineRotation || 0)}deg)`,
                             transition: 'transform 0.3s ease'

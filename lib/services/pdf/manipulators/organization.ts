@@ -1,9 +1,11 @@
-import { PDFDocument, degrees, PDFPage } from 'pdf-lib';
-import { applyBranding, getFileArrayBuffer } from '../core';
 
-export async function reversePDF(file: File): Promise<Uint8Array> {
-    const arrayBuffer = await getFileArrayBuffer(file);
-    const sourcePdf = await PDFDocument.load(arrayBuffer);
+import { PDFDocument, degrees, PDFPage } from 'pdf-lib';
+import { applyBranding, ensurePDFDoc } from '../core';
+
+export async function reversePDF(input: File | Blob | Uint8Array): Promise<Uint8Array>;
+export async function reversePDF(doc: PDFDocument): Promise<PDFDocument>;
+export async function reversePDF(input: File | Blob | PDFDocument | Uint8Array): Promise<Uint8Array | PDFDocument> {
+    const sourcePdf = await ensurePDFDoc(input);
     const newPdf = await PDFDocument.create();
 
     const totalPages = sourcePdf.getPageCount();
@@ -13,12 +15,14 @@ export async function reversePDF(file: File): Promise<Uint8Array> {
     copiedPages.forEach((page: PDFPage) => newPdf.addPage(page));
 
     applyBranding(newPdf);
+    if (input instanceof PDFDocument) return newPdf;
     return await newPdf.save();
 }
 
-export async function extractPages(file: File, pageRange: string): Promise<Uint8Array> {
-    const arrayBuffer = await getFileArrayBuffer(file);
-    const sourcePdf = await PDFDocument.load(arrayBuffer);
+export async function extractPages(input: File | Blob | Uint8Array, pageRange: string): Promise<Uint8Array>;
+export async function extractPages(doc: PDFDocument, pageRange: string): Promise<PDFDocument>;
+export async function extractPages(input: File | Blob | PDFDocument | Uint8Array, pageRange: string): Promise<Uint8Array | PDFDocument> {
+    const sourcePdf = await ensurePDFDoc(input);
     const newPdf = await PDFDocument.create();
     const totalPages = sourcePdf.getPageCount();
 
@@ -48,86 +52,14 @@ export async function extractPages(file: File, pageRange: string): Promise<Uint8
     copiedPages.forEach((page: PDFPage) => newPdf.addPage(page));
 
     applyBranding(newPdf);
+    if (input instanceof PDFDocument) return newPdf;
     return await newPdf.save();
 }
 
-export async function burstPDF(file: File): Promise<File[]> {
-    const arrayBuffer = await getFileArrayBuffer(file);
-    const sourcePdf = await PDFDocument.load(arrayBuffer);
-    const totalPages = sourcePdf.getPageCount();
-    const files: File[] = [];
-
-    for (let i = 0; i < totalPages; i++) {
-        const newPdf = await PDFDocument.create();
-        const [copiedPage] = await newPdf.copyPages(sourcePdf, [i]);
-        newPdf.addPage(copiedPage);
-        applyBranding(newPdf);
-        const bytes = await newPdf.save();
-        // @ts-expect-error - Uint8Array is compatible with BlobPart in practice
-        files.push(new File([bytes], `${file.name.replace('.pdf', '')}_page_${i + 1}.pdf`, { type: 'application/pdf' }));
-    }
-
-    return files;
-}
-
-export async function* convertPDFToImages(
-    file: File,
-    options: {
-        format?: 'png' | 'jpeg' | 'webp';
-        scale?: number;
-        quality?: number;
-    } = {}
-): AsyncGenerator<File> {
-    const { format = 'png', scale = 2.0, quality = 0.85 } = options;
-    const arrayBuffer = await getFileArrayBuffer(file);
-    const pdfjsLib = await import('pdfjs-dist');
-
-    if (typeof window !== 'undefined' && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
-        pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
-    }
-
-    const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
-
-    for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
-        const viewport = page.getViewport({ scale });
-
-        const canvas = document.createElement('canvas');
-        const context = canvas.getContext('2d', { willReadFrequently: true });
-        if (!context) throw new Error('Failed to get canvas context');
-
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-
-        await page.render({ canvasContext: context, viewport }).promise;
-
-        const blob = await new Promise<Blob | null>(resolve =>
-            canvas.toBlob(resolve, `image/${format}`, quality)
-        );
-
-        if (blob) {
-            const ext = format === 'jpeg' ? 'jpg' : format;
-            yield new File(
-                [blob],
-                `${file.name.replace('.pdf', '')}_page_${i}.${ext}`,
-                { type: `image/${format}` }
-            );
-        }
-
-        // Memory cleanup
-        canvas.width = 0;
-        canvas.height = 0;
-        canvas.remove();
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (page as any).cleanup();
-    }
-
-    await pdf.destroy();
-}
-
-export async function rotatePDF(file: File, rotation: 90 | 180 | 270): Promise<Uint8Array> {
-    const arrayBuffer = await getFileArrayBuffer(file);
-    const pdfDoc = await PDFDocument.load(arrayBuffer);
+export async function rotatePDF(input: File | Blob | Uint8Array, rotation: 90 | 180 | 270): Promise<Uint8Array>;
+export async function rotatePDF(doc: PDFDocument, rotation: 90 | 180 | 270): Promise<PDFDocument>;
+export async function rotatePDF(input: File | Blob | PDFDocument | Uint8Array, rotation: 90 | 180 | 270): Promise<Uint8Array | PDFDocument> {
+    const pdfDoc = await ensurePDFDoc(input);
     const pages = pdfDoc.getPages();
 
     pages.forEach((page) => {
@@ -136,5 +68,6 @@ export async function rotatePDF(file: File, rotation: 90 | 180 | 270): Promise<U
     });
 
     applyBranding(pdfDoc);
+    if (input instanceof PDFDocument) return pdfDoc;
     return await pdfDoc.save();
 }

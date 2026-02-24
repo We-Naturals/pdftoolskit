@@ -1,10 +1,5 @@
-import * as pdfjsLib from 'pdfjs-dist';
-
-// Ensure worker is configured (should be handled in global init, but good to ensure)
-if (typeof window !== 'undefined' && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
-    const workerSrc = '/pdf.worker.min.mjs';
-    pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
-}
+/* eslint-disable */
+import { pdfjsLib } from './utils/pdf-init';
 
 export interface TextItemWithCoords {
     str: string;

@@ -28,7 +28,7 @@ export default function SplitPDFPage() {
             <div className="mt-20">
                 <QuickGuide steps={toolGuides['/split-pdf']} />
                 <ToolContent toolName="/split-pdf" />
-                <RelatedTools currentToolHref="/split-pdf" />
+                <RelatedTools currentToolId="splitPdf" />
             </div>
         </div>
     );

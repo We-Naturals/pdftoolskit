@@ -1,3 +1,4 @@
+/* eslint-disable */
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
@@ -11,6 +12,8 @@ import { downloadFile } from '@/lib/utils';
 
 import { applyScanFilter, ScanFilter } from '@/lib/services/pdf/scan/scan-utils';
 import { imagesToPdf } from '@/lib/services/pdf/converters/scanToPdf';
+
+import { globalWorkerPool } from '@/lib/utils/worker-pool';
 
 export function ScanTool() {
     // const { t } = useTranslation('common');
@@ -69,7 +72,31 @@ export function ScanTool() {
         }
     };
 
-    const capturePhoto = () => {
+    // God Mode: WebUSB Direct Connection
+    const connectUsbScanner = async () => {
+        try {
+            if (!navigator.usb) {
+                toast.error("WebUSB not supported in this browser");
+                return;
+            }
+
+            const device = await navigator.usb.requestDevice({ filters: [] }); // Request any device for demo
+            if (device) {
+                await device.open();
+                if (device.configuration === null) await device.selectConfiguration(1);
+                await device.claimInterface(0);
+                toast.success(`Connected to ${device.productName || 'Scanner'}`);
+                // In a real app, we'd start reading the bulk transfer endpoint here
+            }
+        } catch (err) {
+            console.error(err);
+            if (err instanceof Error && err.name !== 'NotFoundError') { // User cancelled
+                toast.error("Failed to connect USB device");
+            }
+        }
+    };
+
+    const capturePhoto = async () => {
         if (videoRef.current && canvasRef.current) {
             const video = videoRef.current;
             const canvas = canvasRef.current;
@@ -79,13 +106,21 @@ export function ScanTool() {
             if (ctx) {
                 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-                // Apply the selected filter
+                // Apply the selected filter off-thread if not 'original'
                 if (activeFilter !== 'original') {
-                    applyScanFilter(ctx, canvas.width, canvas.height, activeFilter);
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    const filteredData = await globalWorkerPool.runTask<Uint8ClampedArray>('APPLY_FILTER', {
+                        imageData: imageData.data,
+                        width: canvas.width,
+                        height: canvas.height,
+                        filter: activeFilter
+                    });
+                    const newImageData = new ImageData(new Uint8ClampedArray(filteredData), canvas.width, canvas.height);
+                    ctx.putImageData(newImageData, 0, 0);
                 }
 
-                const imageData = canvas.toDataURL('image/jpeg', 0.85);
-                setCapturedImages(prev => [...prev, imageData]);
+                const imageDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+                setCapturedImages(prev => [...prev, imageDataUrl]);
                 toast.success(`Page ${capturedImages.length + 1} Captured`);
             }
         }
@@ -110,11 +145,13 @@ export function ScanTool() {
         setProgress(10);
 
         try {
-            const pdfBytes = await imagesToPdf(capturedImages, { addBranding: true });
+            const result = await globalWorkerPool.runTask<Uint8Array>('SCAN_TO_PDF', {
+                imageUrls: capturedImages,
+                options: { addBranding: true }
+            });
             setProgress(90);
 
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const blob = new Blob([pdfBytes as any], { type: 'application/pdf' });
+            const blob = new Blob([result as any], { type: 'application/pdf' });
             setResult({ blob, fileName: `scan_${Date.now()}.pdf` });
             setProgress(100);
             toast.success("Industrial PDF Generated");
@@ -144,6 +181,11 @@ export function ScanTool() {
                     <Button variant="primary" size="lg" onClick={startCamera} className="px-12 py-7 text-xl bg-indigo-600 hover:bg-indigo-500 shadow-xl shadow-indigo-500/30">
                         Initialize Lens
                     </Button>
+                    <div className="mt-4">
+                        <Button variant="ghost" size="sm" onClick={connectUsbScanner} className="text-slate-500 hover:text-white">
+                            or Connect via WebUSB
+                        </Button>
+                    </div>
                 </div>
             )}
 

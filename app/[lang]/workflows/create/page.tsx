@@ -14,8 +14,9 @@ import { FileUpload } from '@/components/shared/FileUpload';
 import { ProgressBar } from '@/components/shared/ProgressBar';
 import { ToolHeader } from '@/components/shared/ToolHeader';
 import { useSubscription } from '@/components/providers/SubscriptionProvider';
+import { globalWorkerPool } from '@/lib/utils/worker-pool';
 import { downloadFile, validatePDFFile, getBaseFileName, formatFileSize } from '@/lib/utils';
-import { WorkflowStep, workflowEngine, WorkflowAction } from '@/lib/workflow-engine';
+import { WorkflowStep, WorkflowAction } from '@/lib/workflow-engine';
 
 // --- Types ---
 
@@ -99,34 +100,20 @@ export default function CreateWorkflowPage() {
         setResult(null);
 
         try {
-            // Mock progress for better UX + Actual Engine execution
-            // const _processedSteps = 0;
-            // const total = steps.length;
-            // const _stepWeight = 100 / total;
-
-            // Hook into engine logs or just simulate? 
-            // The engine runs synchronously (await step 1, await step 2).
-            // We can't tap into it easily without a callback.
-            // Let's modify the engine later to accept a progress callback, OR
-            // Just wrap the engine call.
-
-            // Actually, we can just run the loop here directly if we imported the functions?
-            // No, use the engine. Engine is cleaner.
-            // But Engine executes all at once.
-            // Let's assume Engine is fast enough or we implement callbacks later.
-            // For now, fake progress to 10% then jump.
-
             setProgress(10);
             setCurrentStepInfo('Starting workflow engine...');
 
-            const outcome = await workflowEngine.execute(file, steps);
+            const outcome = await globalWorkerPool.runTask<any>('WORKFLOW_EXECUTE', {
+                fileData: await file.arrayBuffer(),
+                steps
+            });
 
             // Success
             setProgress(100);
             setCurrentStepInfo('Workflow Complete!');
 
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const blob = new Blob([outcome.pdfBytes as any], { type: 'application/pdf' });
+            const blob = new Blob([(outcome as any).pdfBytes], { type: 'application/pdf' });
             setResult({ blob, fileName: `workflow_result_${getBaseFileName(file.name)}.pdf` });
             toast.success('Workflow executed successfully!');
 

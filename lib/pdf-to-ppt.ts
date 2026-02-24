@@ -1,9 +1,4 @@
-import * as pdfjsLib from 'pdfjs-dist';
-
-// Configure PDF.js worker
-if (typeof window !== 'undefined') {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
-}
+import { pdfjsLib } from './utils/pdf-init';
 
 /**
  * Convert PDF to PowerPoint (PPTX)

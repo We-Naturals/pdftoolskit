@@ -38,10 +38,10 @@ export function ToolCard({ tool, index: _index = 0 }: { tool: any, index?: numbe
 
                 {/* Content */}
                 <h3 className="text-xl font-heading font-semibold text-slate-900 dark:text-white mb-2 group-hover:gradient-text transition-all duration-300">
-                    {t(`tools.${tool.id}`)}
+                    {t(`tools.${tool.id}`, tool.name) as string}
                 </h3>
                 <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed overflow-hidden line-clamp-2">
-                    {t(`tools.${tool.id}Desc`)}
+                    {t(`tools.${tool.id}Desc`, tool.description) as string}
                 </p>
 
                 {/* Footer Actions */}

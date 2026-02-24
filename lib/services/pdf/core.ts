@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { PDFDocument, PDFString, PDFDict, PDFName, StandardFonts, rgb, degrees } from 'pdf-lib';
 
 export function applyBranding(pdfDoc: PDFDocument) {
@@ -24,40 +25,18 @@ export function applyBranding(pdfDoc: PDFDocument) {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function getGlobalPDFLib(): Promise<any> {
-    if (typeof window === 'undefined') {
-        return { PDFDocument, StandardFonts, rgb, degrees, PDFName, PDFString, PDFDict };
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if ((window as any).PDFLib) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        return (window as any).PDFLib;
-    }
-
-    return new Promise((resolve, reject) => {
-        const script = document.createElement('script');
-        script.src = 'https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.js';
-        script.onload = () => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            if ((window as any).PDFLib) {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                resolve((window as any).PDFLib);
-            } else {
-                reject(new Error('PDFLib not found in window after script load'));
-            }
-        };
-        script.onerror = () => reject(new Error('Failed to load pdf-lib script'));
-        document.head.appendChild(script);
-    });
+    return { PDFDocument, StandardFonts, rgb, degrees, PDFName, PDFString, PDFDict };
 }
 /**
  * Robustly extracts an ArrayBuffer from a File/Blob, providing full compatibility 
  * across environments (Browsers, Node.js, and Test JSDOM).
  */
-export async function getFileArrayBuffer(file: File | Blob): Promise<ArrayBuffer> {
-    if (typeof file.arrayBuffer === 'function') {
+export async function getFileArrayBuffer(file: File | Blob | ArrayBuffer | Uint8Array): Promise<ArrayBuffer> {
+    if (file instanceof ArrayBuffer) return file;
+    if (file instanceof Uint8Array) return file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength) as ArrayBuffer;
+    if (typeof (file as any).arrayBuffer === 'function') {
         try {
-            return await file.arrayBuffer();
+            return await (file as any).arrayBuffer();
         } catch (_e) {
             // Fall through to fallback if it exists but fails
         }
@@ -68,6 +47,20 @@ export async function getFileArrayBuffer(file: File | Blob): Promise<ArrayBuffer
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result as ArrayBuffer);
         reader.onerror = () => reject(new Error('FileReader failed to read the file.'));
-        reader.readAsArrayBuffer(file);
+        reader.readAsArrayBuffer(file as File | Blob);
     });
+}
+
+/**
+ * Ensures we have a loaded PDFDocument instance.
+ * Supports "Warm Buffer" by returning the same instance if already loaded.
+ */
+export async function ensurePDFDoc(input: File | Blob | PDFDocument | Uint8Array | ArrayBuffer): Promise<PDFDocument> {
+    if (input instanceof PDFDocument) {
+        return input;
+    }
+
+    const buffer = (input instanceof Uint8Array || input instanceof ArrayBuffer) ? input : await getFileArrayBuffer(input);
+    const PDFLib = await getGlobalPDFLib();
+    return await PDFLib.PDFDocument.load(buffer);
 }

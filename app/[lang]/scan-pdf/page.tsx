@@ -25,7 +25,7 @@ export default function ScanPDFPage() {
 
             <QuickGuide steps={toolGuides['/scan-pdf']} />
             <ToolContent toolName="/scan-pdf" />
-            <RelatedTools currentToolHref="/scan-pdf" />
+            <RelatedTools currentToolId="scanPdf" />
         </div>
     );
 }

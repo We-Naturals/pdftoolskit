@@ -1,14 +1,18 @@
+
+import { PDFDocument } from 'pdf-lib';
 import { OptimizationService } from '../OptimizationService';
 
 /**
  * Standard PDF compression via object streams and metadata removal
  */
+export async function compressPDF(input: File | Blob | Uint8Array, quality?: number, targetSizeBytes?: number): Promise<Uint8Array>;
+export async function compressPDF(doc: PDFDocument, quality?: number, targetSizeBytes?: number): Promise<PDFDocument>;
 export async function compressPDF(
-    file: File,
+    input: File | Blob | PDFDocument | Uint8Array,
     quality: number = 0.7,
     targetSizeBytes?: number
-): Promise<Uint8Array> {
-    return OptimizationService.optimize(file, {
+): Promise<Uint8Array | PDFDocument> {
+    return OptimizationService.optimize(input, {
         quality,
         targetSizeBytes
     });
@@ -18,14 +22,11 @@ export async function compressPDF(
  * Aggressive compression by rasterizing pages to JPEGs
  */
 export async function rasterizeAndCompressPDF(
-    file: File,
+    input: File | Blob | PDFDocument | Uint8Array,
     quality: number = 0.7,
     scale: number = 2.0
-): Promise<Uint8Array> {
-    // Note: rasterize is private in OptimizationService, 
-    // but the optimize method handles it or we can expose it if needed.
-    // For compatibility with existing callers who specifically want rasterization:
-    return OptimizationService.optimize(file, {
+): Promise<Uint8Array | PDFDocument> {
+    return OptimizationService.optimize(input, {
         quality,
         scale,
         targetSizeBytes: undefined // Force single pass optimization

@@ -7,7 +7,7 @@ import { FileUpload } from '@/components/shared/FileUpload';
 import { ProgressBar } from '@/components/shared/ProgressBar';
 import { Button } from '@/components/ui/Button';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { getMetadata, stripMetadata } from '@/lib/pdf-utils';
+import { globalWorkerPool } from '@/lib/utils/worker-pool';
 import { downloadFile, validatePDFFile, getBaseFileName } from '@/lib/utils';
 import { RelatedTools } from '@/components/shared/RelatedTools';
 import { ToolContent } from '@/components/shared/ToolContent';
@@ -30,7 +30,9 @@ export default function MetadataAuditorPage() {
         if (validation.valid) {
             setFile(files[0]);
             try {
-                const data = await getMetadata(files[0]);
+                const data = await globalWorkerPool.runTask<any>('GET_METADATA', {
+                    fileData: await files[0].arrayBuffer()
+                });
                 setMetadata(data);
                 toast.success('Metadata extracted successfully');
             } catch (_e) {
@@ -52,7 +54,9 @@ export default function MetadataAuditorPage() {
                 setProgress((prev) => Math.min(prev + 10, 90));
             }, 150);
 
-            const cleanPdfBytes = await stripMetadata(file);
+            const cleanPdfBytes = await globalWorkerPool.runTask<Uint8Array>('STRIP_METADATA', {
+                fileData: await file.arrayBuffer()
+            });
             clearInterval(progressInterval);
             setProgress(100);
 
@@ -180,7 +184,7 @@ export default function MetadataAuditorPage() {
             </div> */}
 
             <ToolContent toolName="/metadata-auditor" />
-            <RelatedTools currentToolHref="/metadata-auditor" />
+            <RelatedTools currentToolId="metadataAuditor" />
         </div>
     );
 }

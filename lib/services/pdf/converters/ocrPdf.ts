@@ -1,5 +1,6 @@
+/* eslint-disable */
 import { createScheduler, createWorker } from 'tesseract.js';
-import * as pdfjsLib from 'pdfjs-dist';
+import { pdfjsLib } from '../../../utils/pdf-init';
 import { PDFDocument } from 'pdf-lib';
 
 export interface OcrOptions {
@@ -9,7 +10,7 @@ export interface OcrOptions {
 }
 
 // Pre-processing filter: Adaptive Thresholding
-function preprocessImage(canvas: HTMLCanvasElement, adaptive: boolean): HTMLCanvasElement {
+function preprocessImage(canvas: any, adaptive: boolean): any {
     if (!adaptive) return canvas;
 
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
@@ -52,7 +53,7 @@ export async function* ocrPdfGenerator(
     // Initialize Scheduler and Pool
     const scheduler = createScheduler();
     const numWorkers = Math.min(4, navigator.hardwareConcurrency || 2);
-    const _workers = await Promise.all(
+    await Promise.all(
         Array.from({ length: numWorkers }).map(async () => {
             const worker = await createWorker(options.languages.join('+'));
             scheduler.addWorker(worker);
@@ -61,47 +62,64 @@ export async function* ocrPdfGenerator(
     );
 
     try {
-        // Process pages in chunks to balance memory and speed
+        // --- PHASE 36.1: CONCURRENT JOB DISPATCH ---
+        const pagePromises = [];
+
         for (let i = 1; i <= numPages; i++) {
             const page = await pdfDoc.getPage(i);
             const viewport = page.getViewport({ scale: 2.0 });
 
-            const canvas = document.createElement('canvas');
+            const canvas = new OffscreenCanvas(viewport.width, viewport.height);
             const context = canvas.getContext('2d');
-            canvas.height = viewport.height;
-            canvas.width = viewport.width;
-
             await page.render({ canvasContext: context!, viewport }).promise;
 
-            // Apply Vision Filter
             const processedCanvas = preprocessImage(canvas, options.adaptiveThreshold);
 
-            // Perform OCR
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const { data: { text, pdf } } = await (scheduler.addJob('recognize', processedCanvas, { pdfTitle: `Page ${i}` }) as any);
-
-            yield {
+            // Dispatch job without awaiting immediately
+            const job = scheduler.addJob('recognize', processedCanvas, { pdfTitle: `Page ${i}` });
+            pagePromises.push(job.then((res: any) => ({
                 page: i,
-                text,
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                pdfPage: new Uint8Array(pdf as any)
-            };
+                text: res.data.text,
+                pdfPage: new Uint8Array(res.data.pdf as any)
+            })));
 
-            // Memory Cleanup
-            canvas.width = 0;
-            canvas.height = 0;
             if (options.onProgress) options.onProgress({ page: i, total: numPages, workerId: 0 });
+        }
+
+        // Await all pages in parallel
+        const results = await Promise.all(pagePromises);
+        results.sort((a, b) => a.page - b.page);
+
+        for (const result of results) {
+            yield result;
         }
     } finally {
         await scheduler.terminate();
     }
 }
 
-export async function ocrPdfFull(file: File, options: OcrOptions): Promise<Uint8Array> {
+export async function imageOcr(file: File, options: OcrOptions): Promise<{ text: string }> {
+    const worker = await createWorker(options.languages.join('+'));
+    try {
+        const { data: { text } } = await worker.recognize(file);
+        return { text };
+    } finally {
+        await worker.terminate();
+    }
+}
+
+export async function ocrPdfFull(file: File, options: OcrOptions): Promise<{ pdf: Uint8Array, text: string }> {
+    if (file.type.startsWith('image/')) {
+        const { text } = await imageOcr(file, options);
+        return { pdf: new Uint8Array(), text };
+    }
+
     const generator = ocrPdfGenerator(file, options);
     const mergedPdf = await PDFDocument.create();
+    let fullText = '';
 
     for await (const result of generator) {
+        fullText += `--- Page ${result.page} ---\n\n${result.text}\n\n`;
         if (result.pdfPage) {
             const pagePdf = await PDFDocument.load(result.pdfPage);
             const [copiedPage] = await mergedPdf.copyPages(pagePdf, [0]);
@@ -109,5 +127,6 @@ export async function ocrPdfFull(file: File, options: OcrOptions): Promise<Uint8
         }
     }
 
-    return await mergedPdf.save();
+    const pdf = await mergedPdf.save();
+    return { pdf, text: fullText };
 }

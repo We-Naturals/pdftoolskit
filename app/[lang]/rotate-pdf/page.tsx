@@ -27,7 +27,7 @@ export default function RotatePDFPage() {
 
             <QuickGuide steps={toolGuides['/rotate-pdf']} />
             <ToolContent toolName="/rotate-pdf" />
-            <RelatedTools currentToolHref="/rotate-pdf" />
+            <RelatedTools currentToolId="rotatePdf" />
         </div>
     );
 }

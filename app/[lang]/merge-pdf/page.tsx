@@ -33,7 +33,7 @@ export default function MergePDFPage() {
 
             <QuickGuide steps={toolGuides['/merge-pdf']} />
             <ToolContent toolName="/merge-pdf" />
-            <RelatedTools currentToolHref="/merge-pdf" />
+            <RelatedTools currentToolId="mergePdf" />
         </div >
     );
 }

@@ -289,7 +289,7 @@ export default function HTMLToPDFPage() {
             <div className="mt-20">
                 <QuickGuide steps={toolGuides['/html-to-pdf']} />
                 <ToolContent toolName="/html-to-pdf" />
-                <RelatedTools currentToolHref="/html-to-pdf" />
+                <RelatedTools currentToolId="htmlToPdf" />
             </div>
         </div>
     );

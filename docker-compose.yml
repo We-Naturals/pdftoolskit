@@ -1,8 +1,9 @@
-version: '3.8'
+
+version: '3'
 
 services:
-  app:
-    container_name: pdftoolkit-app
+  pdftoolskit:
+    container_name: pdftoolskit
     build:
       context: .
       dockerfile: Dockerfile
@@ -11,10 +12,9 @@ services:
       - "3000:3000"
     environment:
       - NODE_ENV=production
-      - NEXT_PUBLIC_SENTRY_DSN=${NEXT_PUBLIC_SENTRY_DSN}
-    networks:
-      - pdftoolkit-network
-
-networks:
-  pdftoolkit-network:
-    driver: bridge
+    # Uncomment if you want to limit resources
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '0.5'
+    #       memory: 512M

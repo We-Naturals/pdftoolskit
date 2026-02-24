@@ -1,7 +1,35 @@
-/* eslint-disable no-restricted-globals */
-/// <reference lib="dom" />
-/// <reference lib="webworker" />
-import * as pdfjsLib from 'pdfjs-dist';
+import * as pdfjsLib from 'pdfjs-dist/build/pdf.mjs';
+
+// Minimal DOM polyfill for PDF.js environment detection in workers
+if (typeof document === 'undefined') {
+    (self as any).document = {
+        createElement: (tag: string) => {
+            if (tag === 'canvas') {
+                const canvas = new OffscreenCanvas(300, 150);
+                (canvas as any).style = {};
+                return canvas;
+            }
+            const el: any = { style: {}, setAttribute: () => { }, append: () => { }, remove: () => { }, removeChild: () => { } };
+            el.parentNode = el;
+            return el;
+        },
+        createElementNS: (ns: string, tag: string) => {
+            if (tag === 'canvas') {
+                const canvas = new OffscreenCanvas(300, 150);
+                (canvas as any).style = {};
+                return canvas;
+            }
+            const el: any = { style: {}, setAttribute: () => { }, append: () => { }, remove: () => { }, removeChild: () => { } };
+            el.parentNode = el;
+            return el;
+        },
+        getElementsByTagName: () => [],
+        documentElement: { style: {} },
+        head: { append: () => { }, appendChild: () => { } },
+        body: { append: () => { }, appendChild: () => { } },
+        nodeType: 9,
+    };
+}
 
 // Configure worker
 // Configure worker
@@ -13,7 +41,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
  */
 // No global canvas to avoid race conditions between renderers
 
-(self as unknown as SharedWorkerGlobalScope).onconnect = (e: MessageEvent) => {
+(self as any).onconnect = (e: any) => {
     const port = e.ports[0];
 
     port.onmessage = async (msgEvent: MessageEvent) => {
@@ -53,7 +81,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 
                 // Create a fresh canvas for every render to avoid "Same Canvas" conflicts
                 const canvas = new OffscreenCanvas(viewport.width, viewport.height);
-                const context = canvas.getContext('2d') as OffscreenCanvasRenderingContext2D;
+                const context = canvas.getContext('2d', { willReadFrequently: true }) as OffscreenCanvasRenderingContext2D;
 
                 if (!context) {
                     throw new Error('Failed to get 2D context');
@@ -80,8 +108,12 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
                 );
 
             } catch (error: any) {
-                console.error('Worker Error:', error);
-                port.postMessage({ type: 'ERROR', message: error.message });
+                if (error?.name === 'PasswordException' || (error?.message && error.message.includes('password given'))) {
+                    port.postMessage({ type: 'LOCKED', message: error.message });
+                } else {
+                    console.error('Worker Error:', error);
+                    port.postMessage({ type: 'ERROR', message: error.message });
+                }
             }
         }
     };

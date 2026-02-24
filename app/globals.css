@@ -50,17 +50,27 @@
   }
 
   @keyframes gradient {
-    0% {
-      background-position: 0% 50%;
-    }
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
 
-    50% {
-      background-position: 100% 50%;
-    }
+  @keyframes scan {
+    from { transform: translateY(-100%); }
+    to { transform: translateY(300%); }
+  }
 
-    100% {
-      background-position: 0% 50%;
-    }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+
+  .animate-scan {
+    animation: scan 2s linear infinite;
+  }
+
+  .animate-float {
+    animation: float 4s ease-in-out infinite;
   }
 }
 

@@ -1,233 +1,32 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Presentation, Download, Layers, Shield, Sparkles, CheckCircle, FileText, Activity, Cpu } from 'lucide-react';
-import toast from 'react-hot-toast';
-import { FileUpload } from '@/components/shared/FileUpload';
-import { ProgressBar } from '@/components/shared/ProgressBar';
-import { Button } from '@/components/ui/Button';
-import { GlassCard } from '@/components/ui/GlassCard';
-import { PptToPdfService } from '@/lib/services/pdf/converters/pptToPdf';
-import { downloadFile, cn, formatFileSize } from '@/lib/utils';
-import { toolGuides } from '@/data/guides';
-import { QuickGuide } from '@/components/shared/QuickGuide';
-import { RelatedTools } from '@/components/shared/RelatedTools';
-import { ToolContent } from '@/components/shared/ToolContent';
-import { useSubscription } from '@/components/providers/SubscriptionProvider';
+import React from 'react';
+import { Presentation } from 'lucide-react';
+import { PowerPointToPdfTool } from '@/components/tools/PowerPointToPdfTool';
 import { ToolHeader } from '@/components/shared/ToolHeader';
+import { ToolContent } from '@/components/shared/ToolContent';
+import { RelatedTools } from '@/components/shared/RelatedTools';
+import { QuickGuide } from '@/components/shared/QuickGuide';
+import { toolGuides } from '@/data/guides';
 
 export default function PowerPointToPDFPage() {
-    const { limits, isPro } = useSubscription();
-    const [file, setFile] = useState<File | null>(null);
-    const [processing, setProcessing] = useState(false);
-    const [progress, setProgress] = useState(0);
-    const [statusMessage, setStatusMessage] = useState("Initializing Parser...");
-
-    const [mode, setMode] = useState<'vivid' | 'structure'>('vivid');
-    const [result, setResult] = useState<{ blob: Blob; fileName: string } | null>(null);
-
-    const handleFileSelected = (files: File[]) => {
-        if (files.length > 0) {
-            const f = files[0];
-            if (f.name.endsWith('.pptx')) {
-                setFile(f);
-                setResult(null);
-                toast.success('Presentation analyzed');
-            } else {
-                toast.error('Please upload a .pptx file');
-            }
-        }
-    };
-
-    const handleConvert = async () => {
-        if (!file) return;
-
-        setProcessing(true);
-        setProgress(10);
-        setStatusMessage("Unpacking OOXML container...");
-
-        try {
-            const interval = setInterval(() => {
-                setProgress(prev => {
-                    const next = prev + (Math.random() * 5);
-                    if (next > 30 && next < 60) setStatusMessage("Mapping spatial coordinates...");
-                    if (next > 60 && next < 90) setStatusMessage("Synthesizing vector PDF...");
-                    return next > 95 ? 95 : next;
-                });
-            }, 500);
-
-            const pdfBytes = await PptToPdfService.convert(file, { mode });
-
-            clearInterval(interval);
-            setProgress(100);
-
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const blob = new Blob([pdfBytes as any], { type: 'application/pdf' });
-            const filename = file.name.replace(/\.[^/.]+$/, "") + '.pdf';
-
-            setResult({ blob, fileName: filename });
-            toast.success('Reconstruction Complete');
-        } catch (error) {
-            console.error('PPTX to PDF Conversion Error:', error);
-            toast.error('Refinement failed');
-        } finally {
-            setProcessing(false);
-        }
-    };
-
     return (
-        <div className="container mx-auto px-4 py-12 lg:py-20 max-w-6xl">
+        <div className="container mx-auto px-4 py-12 lg:py-20 max-w-7xl">
             <ToolHeader
-                toolId="powerpointToPdf"
+                toolId="powerPointToPdf"
                 title="PowerPoint to PDF"
-                description="High-Fidelity Slide Reconstruction: Convert presentations into polished PDF documents with spatial accuracy."
+                description="High-Fidelity Slide Reconstruction: Convert presentations (PPTX) into polished, vector-accurate PDF documents with intelligent spatial mapping."
                 icon={Presentation}
-                color="from-red-600 to-orange-500"
+                color="from-red-500 to-orange-600"
             />
 
-            {!file && !result && (
-                <div className="max-w-4xl mx-auto animate-in fade-in zoom-in-95 duration-700">
-                    <FileUpload
-                        onFilesSelected={handleFileSelected}
-                        files={[]}
-                        multiple={false}
-                        maxSize={limits.maxFileSize}
-                        isPro={isPro}
-                        accept={{
-                            'application/vnd.openxmlformats-officedocument.presentationml.presentation': ['.pptx']
-                        }}
-                    />
-                </div>
-            )}
+            <ToolContent>
+                <PowerPointToPdfTool />
+            </ToolContent>
 
-            {file && !result && !processing && (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in slide-up duration-500">
-                    <div className="lg:col-span-2 space-y-6">
-                        <GlassCard className="p-8 border-red-500/10">
-                            <div className="flex items-center justify-between mb-8">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-red-500/10 rounded-xl flex items-center justify-center border border-red-500/20">
-                                        <Presentation className="w-5 h-5 text-red-500" />
-                                    </div>
-                                    <div>
-                                        <h3 className="text-white font-bold">{file.name}</h3>
-                                        <p className="text-xs text-slate-500 uppercase tracking-widest">{formatFileSize(file.size)} Deck</p>
-                                    </div>
-                                </div>
-                                <Button variant="ghost" size="sm" onClick={() => setFile(null)} className="text-slate-500">Change</Button>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <button
-                                    onClick={() => setMode('vivid')}
-                                    className={cn(
-                                        "p-6 rounded-2xl border transition-all text-left relative overflow-hidden group",
-                                        mode === 'vivid' ? "bg-red-600 border-red-500 shadow-lg shadow-red-600/20" : "bg-slate-900/50 border-white/5 hover:border-white/10"
-                                    )}
-                                >
-                                    <Sparkles className={cn("w-6 h-6 mb-3", mode === 'vivid' ? "text-white" : "text-orange-500")} />
-                                    <p className={cn("font-bold text-sm mb-1", mode === 'vivid' ? "text-white" : "text-slate-200")}>Vivid Reconstruction</p>
-                                    <p className={cn("text-[10px] leading-relaxed", mode === 'vivid' ? "text-red-100" : "text-slate-500")}>Preserves spatial positioning, background images, and vector assets.</p>
-                                    {mode === 'vivid' && <div className="absolute top-2 right-2"><CheckCircle className="w-4 h-4 text-white" /></div>}
-                                </button>
-
-                                <button
-                                    onClick={() => setMode('structure')}
-                                    className={cn(
-                                        "p-6 rounded-2xl border transition-all text-left relative overflow-hidden group",
-                                        mode === 'structure' ? "bg-slate-700 border-slate-600 shadow-lg shadow-slate-600/20" : "bg-slate-900/50 border-white/5 hover:border-white/10"
-                                    )}
-                                >
-                                    <FileText className={cn("w-6 h-6 mb-3", mode === 'structure' ? "text-white" : "text-slate-400")} />
-                                    <p className={cn("font-bold text-sm mb-1", mode === 'structure' ? "text-white" : "text-slate-200")}>Clean Extraction</p>
-                                    <p className={cn("text-[10px] leading-relaxed", mode === 'structure' ? "text-slate-100" : "text-slate-500")}>Focuses purely on text flow and document structure. Grayscale optimized.</p>
-                                    {mode === 'structure' && <div className="absolute top-2 right-2"><CheckCircle className="w-4 h-4 text-white" /></div>}
-                                </button>
-                            </div>
-                        </GlassCard>
-
-                        <div className="grid grid-cols-3 gap-4">
-                            {[
-                                { icon: Cpu, label: "EMU Parser", val: "Active" },
-                                { icon: Activity, label: "Latency", val: "Ultra Low" },
-                                { icon: Shield, label: "Processing", val: "Encrypted" }
-                            ].map((stat, i) => (
-                                <GlassCard key={i} className="p-4 flex flex-col items-center text-center">
-                                    <stat.icon className="w-4 h-4 text-red-500 mb-2" />
-                                    <p className="text-[10px] text-slate-500 uppercase font-black">{stat.label}</p>
-                                    <p className="text-xs text-white font-bold">{stat.val}</p>
-                                </GlassCard>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="space-y-6">
-                        <GlassCard className="p-8 border-red-500/20 bg-red-500/5 items-center flex flex-col">
-                            <Layers className="w-12 h-12 text-red-500 mb-6 animate-pulse" />
-                            <h4 className="text-xl font-bold text-white mb-2 text-center">Commit to PDF</h4>
-                            <p className="text-xs text-slate-400 text-center mb-8">Spatial mapping will align every element to PDF vector coordinates.</p>
-                            <Button
-                                variant="primary"
-                                onClick={handleConvert}
-                                size="lg"
-                                className="w-full py-6 bg-red-600 hover:bg-red-500 shadow-xl shadow-red-600/20 rounded-2xl"
-                                icon={<Download className="w-5 h-5" />}
-                            >
-                                Generate PDF
-                            </Button>
-                        </GlassCard>
-                    </div>
-                </div>
-            )}
-
-            {processing && (
-                <div className="max-w-2xl mx-auto py-20 text-center animate-in zoom-in-95 duration-500">
-                    <div className="relative w-24 h-24 mx-auto mb-8">
-                        <div className="absolute inset-0 border-4 border-red-500/10 rounded-full" />
-                        <div className="absolute inset-0 border-4 border-red-500 border-t-transparent rounded-full animate-spin" />
-                        <Presentation className="absolute inset-0 m-auto w-8 h-8 text-red-500 animate-pulse" />
-                    </div>
-                    <h3 className="text-2xl font-bold text-white mb-4">Reconstructing Slides...</h3>
-                    <ProgressBar progress={progress} label={statusMessage} />
-                </div>
-            )}
-
-            {result && (
-                <div className="max-w-2xl mx-auto animate-in scale-in duration-500">
-                    <GlassCard className="p-12 text-center border-emerald-500/20">
-                        <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-8 border border-emerald-500/20">
-                            <CheckCircle className="w-10 h-10 text-emerald-500" />
-                        </div>
-                        <h3 className="text-3xl font-bold text-white mb-2">Reconstruction Complete!</h3>
-                        <p className="text-slate-400 mb-10">The presentation has been successfully mapped to a professional PDF document.</p>
-
-                        <div className="bg-slate-900/50 p-6 rounded-2xl border border-white/5 mb-8 text-left">
-                            <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Generated Asset</p>
-                            <p className="text-white font-mono text-sm truncate">{result.fileName}</p>
-                        </div>
-
-                        <div className="flex flex-col gap-4">
-                            <Button
-                                variant="primary"
-                                size="lg"
-                                onClick={() => downloadFile(result.blob, result.fileName)}
-                                icon={<Download className="w-6 h-6" />}
-                                className="py-8 text-2xl bg-emerald-600 hover:bg-emerald-500 shadow-2xl shadow-emerald-500/20 rounded-2xl"
-                            >
-                                Download PDF
-                            </Button>
-                            <Button variant="ghost" onClick={() => { setFile(null); setResult(null); }} className="text-slate-500 mt-4 underline underline-offset-4 font-bold uppercase tracking-wider text-[10px]">
-                                Convert Another File
-                            </Button>
-                        </div>
-                    </GlassCard>
-                </div>
-            )}
-
-            <div className="mt-20">
+            <div className="mt-20 space-y-20">
                 <QuickGuide steps={toolGuides['/powerpoint-to-pdf']} />
-                <ToolContent toolName="/powerpoint-to-pdf" />
-                <RelatedTools currentToolHref="/powerpoint-to-pdf" />
+                <RelatedTools currentToolId="powerPointToPdf" />
             </div>
         </div>
     );

@@ -7,6 +7,10 @@ declare module 'pdfjs-dist' {
     export * from 'pdfjs-dist/types/src/pdf';
 }
 
+declare module 'pdfjs-dist/build/pdf.mjs' {
+    export * from 'pdfjs-dist';
+}
+
 declare module 'pdfjs-dist/build/pdf.worker.min.mjs' {
     const worker: any;
     export default worker;

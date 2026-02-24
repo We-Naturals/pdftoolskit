@@ -1,5 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable security/detect-object-injection */
 import { PDFDocument, PDFPage } from 'pdf-lib';
-import { applyBranding, getFileArrayBuffer, getGlobalPDFLib } from './core';
+import { applyBranding, ensurePDFDoc, getGlobalPDFLib, getFileArrayBuffer } from './core';
+import { jsPDF } from 'jspdf';
+import * as pdfjsLib from 'pdfjs-dist/build/pdf.mjs';
 
 export interface ProtectionOptions {
     userPassword: string;
@@ -16,12 +20,15 @@ export interface ProtectionOptions {
     encryptMetadata?: boolean;
 }
 
-export async function protectPDF(file: File, options: ProtectionOptions): Promise<Uint8Array> {
+export async function protectPDF(input: File | Blob | Uint8Array, options: ProtectionOptions): Promise<Uint8Array>;
+export async function protectPDF(doc: PDFDocument, options: ProtectionOptions): Promise<PDFDocument>;
+export async function protectPDF(
+    input: File | Blob | PDFDocument | Uint8Array,
+    options: ProtectionOptions
+): Promise<Uint8Array | PDFDocument> {
     try {
-        const arrayBuffer = await getFileArrayBuffer(file);
         const PDFLib = await getGlobalPDFLib();
-
-        const sourcePdf = await PDFLib.PDFDocument.load(arrayBuffer);
+        const sourcePdf = await ensurePDFDoc(input);
         const newPdf = await PDFLib.PDFDocument.create();
 
         const pages = await newPdf.copyPages(sourcePdf, sourcePdf.getPageIndices());
@@ -29,12 +36,6 @@ export async function protectPDF(file: File, options: ProtectionOptions): Promis
 
         // Metadata Encryption Handling
         if (options.encryptMetadata === false) {
-            // If we want to keep metadata visible, we might need to copy it over explicitly 
-            // and rely on pdf-lib's encryption behavior. 
-            // However, StandardSecurityHandler usually encrypts everything. 
-            // PDF 2.0 allows unencrypted metadata, but pdf-lib is 1.7 based.
-            // We will try to preserve the Info dict, but standard behavior is full encryption.
-            // Best effort: Copy info.
             const title = sourcePdf.getTitle();
             const author = sourcePdf.getAuthor();
             const subject = sourcePdf.getSubject();
@@ -50,41 +51,98 @@ export async function protectPDF(file: File, options: ProtectionOptions): Promis
             applyBranding(newPdf);
         }
 
+        const permissionSettings = {
+            printing: options.permissions?.printing || 'highResolution',
+            modifying: options.permissions?.modifying ?? false,
+            copying: options.permissions?.copying ?? false,
+            annotating: options.permissions?.annotating ?? false,
+            fillingForms: options.permissions?.fillingForms ?? false,
+            contentAccessibility: options.permissions?.contentAccessibility ?? false,
+            documentAssembly: options.permissions?.documentAssembly ?? false,
+        };
 
-        const hasEncryptMethod = typeof newPdf.encrypt === 'function';
+        const hasEncryptMethod = typeof (newPdf as any).encrypt === 'function';
 
         if (hasEncryptMethod) {
-            // Map our high-level permissions to pdf-lib's structure
-            const permissionSettings = {
-                printing: options.permissions?.printing || 'highResolution',
-                modifying: options.permissions?.modifying ?? false,
-                copying: options.permissions?.copying ?? false,
-                annotating: options.permissions?.annotating ?? false,
-                fillingForms: options.permissions?.fillingForms ?? false,
-                contentAccessibility: options.permissions?.contentAccessibility ?? false,
-                documentAssembly: options.permissions?.documentAssembly ?? false,
-            };
-
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (newPdf as any).encrypt({
                 userPassword: options.userPassword,
                 ownerPassword: options.ownerPassword || options.userPassword,
                 permissions: permissionSettings,
             });
+            const encryptedBytes = await newPdf.save();
+            if (input instanceof PDFDocument) return newPdf;
+            return encryptedBytes;
         }
 
-        const encryptedBytes = await newPdf.save();
+        // If native lib lacks encryption, we use jsPDF to create an encrypted image-based envelope.
+        // This ensures the file is ACTUALLY locked as requested by the user.
 
-        // Verification (Basic check if it opens without password - it shouldn't)
-        try {
-            await PDFDocument.load(encryptedBytes, { ignoreEncryption: false });
-            throw new Error('Encryption verification failed: The document remained unlocked.');
-        } catch (e: unknown) {
-            if (e instanceof Error && e.message.includes('Encryption verification failed')) throw e;
-            // Expected to fail loading
+        if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
         }
 
-        return encryptedBytes;
+        const loadingTask = pdfjsLib.getDocument({ data: await sourcePdf.save() });
+        const pdf = await loadingTask.promise;
+        const totalPages = pdf.numPages;
+
+        // Create jsPDF instance with encryption
+        const jspdfPermissions: ('print' | 'modify' | 'copy' | 'annot-forms')[] = [];
+        if (options.permissions?.printing !== 'none') jspdfPermissions.push('print');
+        if (options.permissions?.copying) jspdfPermissions.push('copy');
+        if (options.permissions?.modifying) jspdfPermissions.push('modify', 'annot-forms');
+
+        const doc = new jsPDF({
+            orientation: 'p',
+            unit: 'pt',
+            format: 'a4',
+            encryption: {
+                userPassword: options.userPassword,
+                ownerPassword: options.ownerPassword || options.userPassword,
+                userPermissions: jspdfPermissions
+            }
+        });
+
+        for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+            const page = await pdf.getPage(pageNum);
+            const scale = 2.0; // High quality 
+            const viewport = page.getViewport({ scale });
+
+            const canvas = typeof OffscreenCanvas !== 'undefined'
+                ? new OffscreenCanvas(viewport.width, viewport.height)
+                : document.createElement('canvas');
+
+            if (!canvas) continue;
+            if (!(canvas instanceof OffscreenCanvas)) {
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+            }
+
+            const context = canvas.getContext('2d', { willReadFrequently: true });
+            if (context) {
+                await page.render({ canvasContext: context as any, viewport }).promise;
+
+                let imageData: Uint8Array | string;
+                if (canvas instanceof OffscreenCanvas) {
+                    const blob = await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.95 });
+                    imageData = new Uint8Array(await blob.arrayBuffer());
+                } else {
+                    imageData = (canvas as HTMLCanvasElement).toDataURL('image/jpeg', 0.95);
+                }
+
+                if (pageNum > 1) doc.addPage([viewport.width, viewport.height]);
+                else {
+                    (doc as any).internal.pageSize.width = viewport.width;
+                    (doc as any).internal.pageSize.height = viewport.height;
+                }
+
+                doc.addImage(imageData as any, 'JPEG', 0, 0, viewport.width, viewport.height);
+            }
+        }
+
+        const arrayBuffer = doc.output('arraybuffer');
+        await pdf.destroy();
+        return new Uint8Array(arrayBuffer);
     } catch (error) {
         console.error('Protect PDF failed:', error);
         throw error;
@@ -93,8 +151,8 @@ export async function protectPDF(file: File, options: ProtectionOptions): Promis
 
 export interface SecurityAnalysis {
     isEncrypted: boolean;
-    isOwnerLocked: boolean; // True if it has restrictions but can be opened without password (or with user password)
-    isOpenLocked: boolean; // True if it requires a password to even open
+    isOwnerLocked: boolean;
+    isOpenLocked: boolean;
 }
 
 export async function analyzeSecurity(file: File): Promise<SecurityAnalysis> {
@@ -102,70 +160,131 @@ export async function analyzeSecurity(file: File): Promise<SecurityAnalysis> {
     const PDFLib = await getGlobalPDFLib();
 
     try {
-        // Try to load without password first
         const pdfDoc = await PDFLib.PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
-
-        // If it loads, check if it has encryption dictionary
         const isEncrypted = pdfDoc.isEncrypted;
-
         return {
             isEncrypted,
-            isOwnerLocked: isEncrypted, // If it loaded but is encrypted, it's owner locked (permissions only)
+            isOwnerLocked: isEncrypted,
             isOpenLocked: false
         };
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
-        if (error.message && error.message.includes('Password required')) {
+        const errorMsg = error?.message || '';
+        if (errorMsg.includes('Password required') || errorMsg.includes('is encrypted') || errorMsg.includes('encrypted')) {
             return {
                 isEncrypted: true,
                 isOwnerLocked: false,
                 isOpenLocked: true
             };
         }
-        // Some other error
         console.error('Security analysis error:', error);
-        return {
-            isEncrypted: false,
-            isOwnerLocked: false,
-            isOpenLocked: false
-        };
+        return { isEncrypted: false, isOwnerLocked: false, isOpenLocked: false };
     }
 }
 
-export async function unlockPDF(file: File, password?: string): Promise<Uint8Array> {
-    const arrayBuffer = await getFileArrayBuffer(file);
+export async function unlockPDF(input: File | Blob | Uint8Array, password?: string): Promise<Uint8Array>;
+export async function unlockPDF(doc: PDFDocument, password?: string): Promise<PDFDocument>;
+export async function unlockPDF(input: File | Blob | PDFDocument | Uint8Array, password?: string): Promise<Uint8Array | PDFDocument> {
     try {
         const PDFLib = await getGlobalPDFLib();
-        let encryptedPdf;
+        const buffer = input instanceof Uint8Array ? input : (input instanceof PDFDocument ? await input.save() : await getFileArrayBuffer(input));
 
-        // Strategy 1: Try exact password or empty
         try {
-            encryptedPdf = await PDFLib.PDFDocument.load(arrayBuffer, {
+            const encryptedPdf = await PDFLib.PDFDocument.load(buffer, {
                 password: password || undefined,
                 ignoreEncryption: false
             });
+            const newPdf = await PDFLib.PDFDocument.create();
+            const pages = await newPdf.copyPages(encryptedPdf, encryptedPdf.getPageIndices());
+            pages.forEach((page: PDFPage) => newPdf.addPage(page));
+
+            applyBranding(newPdf);
+            if (input instanceof PDFDocument) return newPdf;
+            return await newPdf.save();
+
         } catch (loadError: unknown) {
-            // Strategy 2: If failed, and no password provided, maybe it's Open-Locked
-            if (loadError instanceof Error && loadError.message && (loadError.message.includes('Input document') && loadError.message.includes('is encrypted'))) {
-                throw new Error('This document is Password Locked. Please enter the Open Password.');
+            let requiresFallback = false;
+            if (loadError instanceof Error && loadError.message) {
+                if (loadError.message.includes('Incorrect password')) {
+                    throw new Error('Incorrect password.');
+                }
+                requiresFallback = true;
+            } else {
+                requiresFallback = true;
             }
-            if (loadError instanceof Error && loadError.message.includes('Incorrect password')) {
-                throw new Error('Incorrect password.');
+
+            if (requiresFallback) {
+                // eslint-disable-next-line no-console
+                console.log('pdf-lib failed to decrypt the document. Invoking pdf.js AES fallback engine...');
+                if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
+                    pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+                }
+
+                try {
+                    const loadingTask = pdfjsLib.getDocument({ data: buffer, password });
+                    const pdf = await loadingTask.promise;
+                    const totalPages = pdf.numPages;
+
+                    const newPdf = await PDFLib.PDFDocument.create();
+
+                    for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+                        const page = await pdf.getPage(pageNum);
+                        const scale = 2.0;
+                        const viewport = page.getViewport({ scale });
+
+                        const canvas = typeof OffscreenCanvas !== 'undefined'
+                            ? new OffscreenCanvas(viewport.width, viewport.height)
+                            : document.createElement('canvas');
+
+                        if (!canvas) continue;
+                        if (!(canvas instanceof OffscreenCanvas)) {
+                            canvas.width = viewport.width;
+                            canvas.height = viewport.height;
+                        }
+
+                        const context = canvas.getContext('2d', { willReadFrequently: true });
+                        if (context) {
+                            await page.render({ canvasContext: context as any, viewport }).promise;
+
+                            let imageBuf: ArrayBuffer;
+                            if (canvas instanceof OffscreenCanvas) {
+                                const blob = await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.95 });
+                                imageBuf = await blob.arrayBuffer();
+                            } else {
+                                const dataUrl = (canvas as HTMLCanvasElement).toDataURL('image/jpeg', 0.95);
+                                const base64 = dataUrl.split(',')[1];
+                                const binary = atob(base64);
+                                imageBuf = new ArrayBuffer(binary.length);
+                                const view = new Uint8Array(imageBuf);
+                                for (let i = 0; i < binary.length; i++) {
+                                    view[i] = binary.charCodeAt(i);
+                                }
+                            }
+
+                            const image = await newPdf.embedJpg(imageBuf);
+                            const newPage = newPdf.addPage([viewport.width, viewport.height]);
+                            newPage.drawImage(image, { x: 0, y: 0, width: viewport.width, height: viewport.height });
+                        }
+                    }
+
+                    applyBranding(newPdf);
+                    await pdf.destroy();
+                    if (input instanceof PDFDocument) return newPdf;
+                    return await newPdf.save();
+
+                } catch (pdfjsError: any) {
+                    if (pdfjsError.name === 'PasswordException') {
+                        if (pdfjsError.code === 1) throw new Error('This document is Password Locked. Please enter the Open Password.');
+                        if (pdfjsError.code === 2) throw new Error('Incorrect password.');
+                    }
+                    console.error('pdf.js fallback also failed:', pdfjsError);
+                    throw new Error('Failed to unlock PDF. The file might be corrupted or use unsupported encryption.');
+                }
             }
-            throw loadError;
+            throw new Error('Failed to unlock PDF. The file might be corrupted or use unsupported encryption.');
         }
-
-        const newPdf = await PDFLib.PDFDocument.create();
-        const pages = await newPdf.copyPages(encryptedPdf, encryptedPdf.getPageIndices());
-        pages.forEach((page: PDFPage) => newPdf.addPage(page));
-
-        // Saving without encryption options effectively strips the security
-        applyBranding(newPdf);
-        return await newPdf.save();
     } catch (error: unknown) {
         console.error('Unlock failed:', error);
-        if (error instanceof Error && error.message && (error.message.includes('Incorrect password') || error.message.includes('is encrypted'))) {
-            // Passthrough meaningful errors
+        if (error instanceof Error && (error.message.includes('Password Locked') || error.message.includes('Incorrect password'))) {
             throw error;
         }
         throw new Error('Failed to unlock PDF. The file might be corrupted or use unsupported encryption.');

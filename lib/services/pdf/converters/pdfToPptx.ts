@@ -1,10 +1,6 @@
 /* eslint-disable */
-import * as pdfjsLib from 'pdfjs-dist';
-
-// Configure PDF.js worker
-if (typeof window !== 'undefined') {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
-}
+import { pdfjsLib } from '@/lib/utils/pdf-init';
+// import { PDFDocument } from 'pdf-lib'; // Lint: Unused
 
 export interface PptxOptions {
     mode: 'editable' | 'raster';
@@ -73,7 +69,7 @@ export class PptxService {
 
                 // 2. Overlay Editable Text
                 const textContent = await page.getTextContent();
-                const { width, height } = page.getViewport({ scale: 1 });
+                const { height } = page.getViewport({ scale: 1 });
 
                 textContent.items.forEach((item: any) => {
                     if (!item.str.trim()) return;

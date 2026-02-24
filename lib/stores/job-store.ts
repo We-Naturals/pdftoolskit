@@ -21,6 +21,7 @@ export interface Job {
     id: string;
     fileName: string;
     tool: string;
+    type: 'client' | 'server';
     status: 'pending' | 'processing' | 'completed' | 'failed';
     progress: number;
     error?: string;

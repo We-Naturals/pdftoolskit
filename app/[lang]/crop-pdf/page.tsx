@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/Button';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { cropPDF } from '@/lib/pdf-utils';
 import { downloadFile, validatePDFFile, getBaseFileName, cn } from '@/lib/utils';
+import { globalWorkerPool } from '@/lib/utils/worker-pool';
 import { InteractiveOverlay, SelectionRect } from '@/components/pdf/InteractiveOverlay';
 import { toolGuides } from '@/data/guides';
 import { QuickGuide } from '@/components/shared/QuickGuide';
@@ -221,9 +222,13 @@ export default function CropPDFPage() {
             // and the user hit "Apply to All" (hypothetically), we could pass global margins.
             // But per-page is safer.
 
-            const newPdfBytes = await cropPDF(file, { top: 0, bottom: 0, left: 0, right: 0 }, {
-                perPageCrops: cropsToSubmit,
-                anonymize
+            const newPdfBytes = await globalWorkerPool.runTask<Uint8Array>('CROP_PDF', {
+                fileData: await file.arrayBuffer(),
+                margins: { top: 0, bottom: 0, left: 0, right: 0 },
+                options: {
+                    perPageCrops: cropsToSubmit,
+                    anonymize
+                }
             });
 
             clearInterval(progressInterval);
@@ -547,7 +552,7 @@ export default function CropPDFPage() {
             )}
             <QuickGuide steps={toolGuides['/crop-pdf']} />
             <ToolContent toolName="/crop-pdf" />
-            <RelatedTools currentToolHref="/crop-pdf" />
+            <RelatedTools currentToolId="cropPdf" />
         </div>
     );
 }

@@ -350,7 +350,7 @@ export default function ExtractPagesPage() {
             <div className="mt-20">
                 <QuickGuide steps={toolGuides['/extract-pages']} />
                 <ToolContent toolName="/extract-pages" />
-                <RelatedTools currentToolHref="/extract-pages" />
+                <RelatedTools currentToolId="extractPages" />
             </div>
         </div>
     );

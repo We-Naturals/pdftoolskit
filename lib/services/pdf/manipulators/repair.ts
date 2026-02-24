@@ -1,6 +1,7 @@
 import { PDFDocument } from 'pdf-lib';
 import { applyBranding, getFileArrayBuffer } from '../core';
 import { rasterizeAndCompressPDF } from './compression';
+import { XRefRebuilder } from './xref-rebuilder';
 
 /**
  * Tiered Repair Strategy: 
@@ -64,7 +65,7 @@ export async function executeHealAction(file: File): Promise<{ data: Uint8Array;
             report.integrityScore = 30;
             report.corruptionType = 'Unknown';
             const rasterData = await rasterizeAndCompressPDF(file, 0.95, 2.0);
-            return { data: rasterData, report };
+            return { data: rasterData as Uint8Array, report };
         }
     } else if (pdfHeaderIndex > 0) {
         // Small offset
@@ -103,22 +104,37 @@ export async function executeHealAction(file: File): Promise<{ data: Uint8Array;
     try {
         // Standard structural rebuild by loading and saving with pdf-lib
         // pdf-lib naturally rebuilds the XRef table and object tree
-        const pdf = await PDFDocument.load(arrayBuffer, {
-            ignoreEncryption: true,
-            throwOnInvalidObject: false
-        });
+        let pdf;
+        try {
+            pdf = await PDFDocument.load(arrayBuffer, {
+                ignoreEncryption: true,
+                throwOnInvalidObject: false
+            });
+        } catch (_loadErr) {
+            console.warn('Standard load failed - attempting XRef reconstruction...');
+            const rebuiltBuffer = await XRefRebuilder.rebuild(arrayBuffer);
+            pdf = await PDFDocument.load(rebuiltBuffer, {
+                ignoreEncryption: true,
+                throwOnInvalidObject: false
+            });
+            report.xrefRebuilt = true;
+            report.issuesFixed.push('Deep Forensic Reconstruction of XRef table successful');
+            report.corruptionType = 'XRef Fracture';
+            arrayBuffer = rebuiltBuffer;
+        }
 
-        report.xrefRebuilt = true;
-        report.issuesFixed.push('Reconstructed XRef table and object tree');
-
-        // Check for "Orphan" pages (pages in doc vs pages in tree) - logic is abstract here 
-        // as pdf-lib handles it, but if page count is suspicious we can warn.
+        if (!report.xrefRebuilt) {
+            report.xrefRebuilt = true;
+            report.issuesFixed.push('Reconstructed XRef table and object tree');
+        }
 
         // --- TIER 2.5: Metadata Sanitization ---
         try {
             pdf.setTitle(pdf.getTitle() || 'Healed Document');
-            pdf.setAuthor('PDF Toolkit (Docu-Heal)');
-            // Purging orphaned metadata dictionaries by resetting key fields
+            pdf.setAuthor('AntiGravity Docu-Heal');
+            pdf.setProducer('AntiGravity Intelligent Engine');
+
+            // Purging orphaned metadata dictionaries
             const catalog = pdf.catalog;
             if (catalog.has(pdf.context.obj('Metadata'))) {
                 report.metadataCleaned = true;
@@ -132,18 +148,19 @@ export async function executeHealAction(file: File): Promise<{ data: Uint8Array;
         const savedData = await pdf.save();
 
         report.integrityScore = report.fallbackUsed ? 50 : 95;
-        if (report.garbageBytesRemoved > 0) report.integrityScore = 98; // Very high confidence if just garbage
+        if (report.garbageBytesRemoved > 0) report.integrityScore = 98;
+        if (report.xrefRebuilt) report.integrityScore = Math.max(report.integrityScore, 90);
 
         return { data: savedData, report };
 
     } catch (err) {
-        console.error('Tier 1 & 2 failed - triggering Tier 3 Deep Heal:', err);
+        console.error('All structural repair tiers failed - triggering Deep Heal (Rasterization):', err);
         report.fallbackUsed = true;
         report.integrityScore = 40;
         report.corruptionType = 'Stream Damage';
-        report.issuesFixed.push('Structural failure - performed visual reconstruction (Rasterization)');
+        report.issuesFixed.push('Critical structural failure - visual reconstruction forced');
         const rasterData = await rasterizeAndCompressPDF(file, 0.95, 2.0);
-        return { data: rasterData, report };
+        return { data: rasterData as Uint8Array, report };
     }
 }
 

@@ -22,6 +22,9 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 *.log
+lint_log.txt
+openssl_mk_debug.txt
+
 
 # local env files
 .env*.local
