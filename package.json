@@ -82,7 +82,6 @@
     "zustand": "^5.0.11"
   },
   "devDependencies": {
-    "@jridgewell/source-map": "^0.3.11",
     "@playwright/test": "^1.48.1",
     "@types/canvas-confetti": "^1.9.0",
     "@types/node": "^22.9.0",
@@ -94,22 +93,13 @@
     "@vitejs/plugin-react": "^5.1.4",
     "@vitest/ui": "^4.0.18",
     "autoprefixer": "^10.4.20",
-    "buffer-from": "^1.1.2",
-    "commander": "^2.20.3",
     "cross-env": "^10.1.0",
     "eslint": "^8.57.1",
     "eslint-config-next": "14.2.18",
     "eslint-plugin-security": "^3.0.1",
-    "estraverse": "^4.3.0",
-    "fast-uri": "^3.1.0",
     "jsdom": "^28.0.0",
-    "json-schema-traverse": "^1.0.0",
-    "merge-stream": "^2.0.0",
     "postcss": "^8.4.49",
-    "source-map-support": "^0.5.21",
-    "supports-color": "^8.1.1",
     "tailwindcss": "^3.4.15",
-    "terser": "^5.46.0",
     "typescript": "^5.6.3",
     "vitest": "^4.0.18"
   }
